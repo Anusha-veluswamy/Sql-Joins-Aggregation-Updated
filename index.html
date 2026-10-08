@@ -1,0 +1,1543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SQL JOINs and Aggregation Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1B2A49; --teal:#0E7C7B; --teal-l:#DCEFEE; --coral:#C8553D; --coral-l:#FBE3D8;
+  --amber:#B7791F; --amber-l:#FBEBC9; --red:#B42318; --paper:#F4F7FA; --card:#FFFFFF;
+  --line:#D5DEE8; --muted:#55657A; --text:#1F2937; --g0:#EAF1FB; --g1:#F6EEDD;
+  --code-bg:#14213D; --code-fg:#E8EEF7; --code-kw:#5ED0CB; --code-fn:#F4A582;
+  --step-bg:#EEF3F8;
+  --sans:"Atkinson Hyperlegible",Calibri,"Segoe UI",Arial,sans-serif;
+  --serif:"Source Serif 4",Cambria,Georgia,serif;
+  --mono:"JetBrains Mono",Consolas,"Courier New",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{--ink:#C9D6EE;--teal:#3DB8B8;--teal-l:#123F42;--coral:#E7866F;--coral-l:#4A2620;--amber:#E2B04F;--amber-l:#45361A;
+  --red:#FF8A80;--paper:#0F1726;--card:#16213A;--line:#2C3B57;--muted:#9AA9BF;--text:#E6ECF5;--g0:#1B2C4A;--g1:#3A3020;
+  --code-bg:#0B1220;--step-bg:#1B2840}
+  thead th{color:#0F1726!important}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+body{margin:0;background:var(--paper);color:var(--text);font:16px/1.55 var(--sans)}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.top{position:sticky;top:0;z-index:5;background:var(--ink);color:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:10px 24px}
+@media (prefers-color-scheme: dark){.top{background:#22314F;color:var(--text)}}
+.top strong{font:700 1.05rem var(--serif)}
+.top .sp{margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;font-size:.9rem}
+.top select{font:inherit;padding:4px 8px;border-radius:6px;border:0}
+.seg{display:inline-flex;border:1px solid rgba(255,255,255,.45);border-radius:8px;overflow:hidden}
+.seg button{background:transparent;color:inherit;border:0;padding:4px 10px;font-size:.88rem}
+.seg button[aria-pressed="true"]{background:var(--teal);color:#fff;font-weight:700}
+.layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:28px;max-width:1440px;margin:0 auto;padding:24px}
+@media (max-width:980px){.layout{grid-template-columns:minmax(0,1fr);padding:16px}.toc{position:static!important;max-height:none!important}}
+.toc{position:sticky;top:70px;max-height:calc(100vh - 90px);overflow:auto;font-size:.88rem;padding-right:6px}
+.toc a{color:var(--muted);text-decoration:none;display:block;padding:2px 0}
+.toc a:hover{color:var(--teal)}
+.toc .part{color:var(--ink);font-weight:700;margin-top:10px}
+.toc .qa{padding-left:12px}
+.toc .qa b{color:var(--teal);font-weight:700;margin-right:4px}
+.toc a.on{color:var(--teal);font-weight:700}
+body.slides .bonus{display:none!important}
+h1{font:700 2.3rem/1.1 var(--serif);color:var(--ink);margin:0 0 8px}
+h2{font:700 1.6rem/1.2 var(--serif);color:var(--ink);margin:44px 0 6px}
+h3{font:700 1.2rem/1.25 var(--serif);color:var(--ink);margin:0}
+.eyebrow{font:700 .78rem var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin:0 0 4px}
+.lede{max-width:72ch;color:var(--muted);margin:0 0 16px}
+.intro{max-width:75ch;margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin:16px 0}
+.qtitle{font:700 1.35rem/1.25 var(--serif);color:var(--ink);margin:0 0 16px;max-width:60ch}
+.tag{display:inline-block;font:700 .7rem var(--sans);letter-spacing:.04em;text-transform:uppercase;background:var(--amber-l);color:var(--amber);border-radius:10px;padding:1px 8px;margin-left:8px;vertical-align:2px}
+.lbl{font:700 .74rem var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin:0 0 8px}
+.slide3{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.95fr) minmax(0,1.2fr);gap:20px;align-items:start}
+.out table,.datagrid table{font-size:12.5px}.out th,.out td,.datagrid th,.datagrid td{padding:4px 7px}
+.slide3.nosteps{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}
+@media (max-width:1250px){.slide3{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}.slide3 .out{grid-column:1/-1}}
+@media (max-width:760px){.slide3,.slide3.nosteps{grid-template-columns:minmax(0,1fr)}.top{padding:10px 16px}.top .sp{margin-left:0}h1{font-size:1.8rem}.card{padding:14px}}
+.codewrap{position:relative}
+pre.sql{font:13px/1.55 var(--mono);padding-top:34px!important;background:var(--code-bg);color:var(--code-fg);border-radius:10px;padding:14px 16px;overflow-x:auto;margin:0}
+pre.sql .kw{color:var(--code-kw);font-weight:600}
+pre.sql .fn{color:var(--code-fn);font-weight:600}
+.copy{position:absolute;top:8px;right:8px;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:2px 8px;font-size:.75rem}
+.copy:hover{background:rgba(255,255,255,.22)}
+ol.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;counter-reset:st}
+ol.steps li{counter-increment:st;position:relative;background:var(--step-bg);border-radius:8px;padding:7px 10px 7px 40px;font-size:.88rem;line-height:1.35}
+ol.steps li::before{content:counter(st);position:absolute;left:9px;top:8px;width:22px;height:22px;border-radius:50%;background:var(--teal);color:#fff;font:700 .75rem/22px var(--sans);text-align:center}
+ol.steps li code{display:block;font:600 .8rem/1.4 var(--mono);color:var(--ink);margin-top:2px;overflow-wrap:anywhere}
+.callout{border-radius:8px;padding:10px 14px;margin-top:12px;background:var(--teal-l);font-size:.92rem}
+.callout.warn{background:var(--coral-l)}
+details.think,details.walk,details.compare{margin-top:16px;border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+details summary{cursor:pointer;font-weight:700;color:var(--ink)}
+.chain{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin:10px 0 0 4px;font-size:.92rem}
+.chain span{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:2px 10px}
+.chain i{color:var(--muted);font-style:normal;padding-left:14px;line-height:1.1}
+.chain span.code{font-family:var(--mono);font-size:.84rem;border-color:var(--teal);color:var(--ink)}
+.chain span.q{font-weight:700;border-color:var(--ink)}
+.walk>.inner{margin-top:12px}
+.pipe{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 10px;align-items:center}
+.pipe span{font:700 .75rem var(--sans);padding:3px 9px;border-radius:12px;border:1px solid var(--line);color:var(--muted)}
+.pipe span.done{border-color:var(--teal);color:var(--teal)}
+.pipe span.now{background:var(--teal);border-color:var(--teal);color:#fff}
+.pipe b{color:var(--line)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;border-radius:8px;font-weight:700;font-size:.92rem}
+.btn.primary{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.btn:disabled{opacity:.4;cursor:default}
+.counter{margin-left:auto;color:var(--muted);font-size:.85rem}
+.narr{background:var(--ink);color:var(--card);border-radius:10px;padding:12px 16px;min-height:3em;margin-bottom:14px}
+@media (prefers-color-scheme: dark){.narr{background:#22314F;color:var(--text)}}
+.viz .panels{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:14px}
+.viz .panels>div{flex:1 1 280px;min-width:0}
+.tt{font:700 .95rem var(--mono);color:var(--ink);margin:0 0 4px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;font:13px/1.35 var(--mono)}
+th,td{border:1px solid var(--line);padding:5px 9px;text-align:left;white-space:nowrap}
+thead th{background:var(--teal);color:#fff;font-weight:600}
+th.hc{background:var(--ink)}
+td.hc{font-weight:700}
+.null{color:var(--muted);font-style:italic}
+tr.cur td{box-shadow:inset 0 2px 0 var(--ink),inset 0 -2px 0 var(--ink);font-weight:700}
+tr.match td{background:var(--teal-l)}
+tr.new td{background:var(--teal-l);animation:pop .5s ease-out}
+tr.drop td{background:var(--coral-l);text-decoration:line-through;color:var(--red)}
+tr.dup td{background:var(--amber-l);text-decoration:line-through}
+tr.g0 td{background:var(--g0)} tr.g1 td{background:var(--g1)}
+tr.only td{background:var(--coral-l);font-weight:700}
+tr.nomatch td{background:var(--coral-l)}
+tr.repeat td{background:var(--teal-l)}
+td.diff{background:var(--amber-l)!important;font-weight:700}
+@keyframes pop{from{opacity:.4}to{opacity:1}}
+.empty{color:var(--muted);font-style:italic}
+.cmpgrid{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px}
+.cmpgrid>div{flex:1 1 260px;min-width:0}
+.cmpsum{margin:10px 0 0;font-size:.95rem}
+.edit{cursor:text}
+.edit:hover{outline:2px dashed var(--teal);outline-offset:-3px}
+td input{font:inherit;width:100%;min-width:70px;border:1px solid var(--teal);padding:1px 4px;background:var(--card);color:var(--text)}
+.datagrid{display:flex;flex-wrap:wrap;gap:16px 22px;align-items:flex-start}
+.datagrid>div:not(.lk){max-width:100%;align-self:flex-start}
+.diagram{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;font:600 .85rem var(--mono);margin:0 0 14px}
+.diagram .box{border:2px solid var(--ink);border-radius:8px;padding:4px 10px;color:var(--ink)}
+.diagram .box.bridge{border-color:var(--teal);color:var(--teal)}
+.diagram .lk{color:var(--teal);font-size:.78rem}
+@media (max-width:760px){.datagrid{flex-direction:column;align-items:flex-start}}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:8px}
+.facts div{border-radius:8px;padding:12px 16px;background:var(--coral-l)}
+.facts div.rep{background:var(--teal-l)}
+.setup{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:12px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;color:var(--muted);font-size:.85rem;margin:12px 0 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:14px;border-radius:3px;display:inline-block;border:1px solid var(--line)}
+ul.tight{margin:6px 0;padding-left:20px}
+table.sum td,table.sum th{white-space:normal;font-family:var(--sans);font-size:.92rem}
+table.sum td.in{color:var(--teal);font-weight:700}
+table.sum td.out{color:var(--coral);font-weight:700}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body class="slides">
+<div class="top"><strong>SQL JOINs and Aggregation Explorer</strong>
+  <div class="sp">
+    <label>Speed
+      <select id="speed"><option value="1600">Slow</option><option value="900" selected>Normal</option><option value="400">Fast</option></select>
+    </label>
+  </div>
+</div>
+<div class="layout">
+  <nav class="toc" id="toc" aria-label="Questions"></nav>
+  <main>
+    <p class="eyebrow">GoogleMapsReview database</p>
+    <h1>SQL JOINs and Aggregation</h1>
+    <p class="lede">Query · flow · output for every question, using the GoogleMapsReview database. Each question shows the SQL, how to think it through, and the output. Open <em>Watch it run</em> to step through the rows the way the database does. Edit the data below and every output updates.</p>
+
+    <section id="setup">
+      <p class="eyebrow">Database setup</p>
+      <h2 style="margin-top:8px">Create the tables and insert the data</h2>
+      <p class="intro">Run this script once to build the GoogleMapsReview database. Review50 is the bridge table: its two foreign keys point to Restaurant50 and Customer50.</p>
+      <div class="card">
+        <div class="codewrap"><pre class="sql" data-sql="setup0"></pre></div>
+        <div class="setup">
+          <div class="codewrap"><p class="tt">Restaurant50</p><pre class="sql" data-sql="setup1"></pre></div>
+          <div class="codewrap"><p class="tt">Customer50</p><pre class="sql" data-sql="setup2"></pre></div>
+          <div class="codewrap"><p class="tt">Review50</p><pre class="sql" data-sql="setup3"></pre></div>
+        </div>
+        <div class="callout"><strong>AUTO_INCREMENT = 101</strong> makes the first RestaurantID 101, and <strong>AUTO_INCREMENT = 201</strong> starts CustomerID at 201. That is why the INSERT statements do not list the ID columns — MySQL fills them in: 101, 102, 103, … and 201, 202, 203, …</div>
+        <div class="controls" style="margin:14px 0 0"><button class="btn" id="copyAll">Copy the full script</button></div>
+      </div>
+    </section>
+
+    <section id="data">
+      <p class="eyebrow">The data</p>
+      <h2 style="margin-top:8px">The three tables — Review50 is the bridge between them</h2>
+      <p class="intro">Each review links one customer to one restaurant with a rating from 1 to 5. Click any cell to change it (type NULL for an empty value); every question below follows your data.</p>
+      <div class="card"><div class="diagram" aria-label="Table relationships"><span class="box">Restaurant50</span><span class="lk">◄ RestaurantID</span><span class="box bridge">Review50</span><span class="lk">CustomerID ►</span><span class="box">Customer50</span></div><div class="datagrid" id="dataTables"></div>
+        <div class="controls" style="margin:14px 0 0"><button class="btn" id="resetData">Reset sample data</button></div>
+      </div>
+      <p class="lbl" style="margin-top:18px">Keep these in mind — they make the joins give different results</p>
+      <div class="facts">
+        <div>Taco House (103) has no reviews.</div>
+        <div>Priya (204) and AAAA (206) have never written a review.</div>
+        <div class="rep">Anu reviewed ABC Restaurant twice, and Arun reviewed Tasty Bites twice.</div>
+      </div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--coral-l)"></i>No match / removed</span>
+        <span><i class="sw" style="background:var(--teal-l)"></i>Repeat review / match / new row</span>
+        <span><i class="sw" style="box-shadow:inset 0 0 0 2px var(--ink)"></i>Row being checked</span>
+        <span><i class="sw" style="background:var(--amber-l)"></i>Duplicate or different value</span>
+        <span><i class="sw" style="background:var(--g0)"></i><i class="sw" style="background:var(--g1)"></i>Groups</span>
+      </div>
+    </section>
+    <div id="queries"></div>
+
+    <section id="summary">
+      <p class="eyebrow">Summary</p>
+      <h2 style="margin-top:8px">Which rows does each join keep?</h2>
+      <div class="card scroll">
+        <table class="sum"><thead><tr><th>Join</th><th>Taco House (no reviews)</th><th>Priya / AAAA (no reviews)</th><th>Rows</th></tr></thead><tbody id="keepRows"></tbody></table>
+        <p class="cmpsum" id="keepNote"></p>
+      </div>
+      <h2>The overall picture</h2>
+      <div class="card scroll">
+        <table class="sum"><thead><tr><th>#</th><th>Join type</th><th>What it keeps</th><th>In this database</th></tr></thead><tbody>
+          <tr><td>1</td><td>INNER JOIN</td><td>Only matching rows</td><td>Drops Taco House, Priya, and AAAA</td></tr>
+          <tr><td>2</td><td>LEFT JOIN</td><td>All rows from the left table + matches</td><td>Keeps Taco House (from Restaurant50)</td></tr>
+          <tr><td>3</td><td>RIGHT JOIN</td><td>All rows from the right table + matches</td><td>Keeps Priya and AAAA (to Customer50)</td></tr>
+          <tr><td>4</td><td>FULL OUTER JOIN</td><td>All rows from both tables (LEFT + RIGHT + UNION in MySQL)</td><td>Keeps everyone: 11 rows</td></tr>
+          <tr><td>5</td><td>SELF JOIN</td><td>A table joined with itself</td><td>Customers in the same city, repeat reviews</td></tr>
+          <tr><td>6</td><td>NATURAL JOIN</td><td>Automatic match on all same-named columns</td><td>Accidentally matches on City</td></tr>
+        </tbody></table>
+      </div>
+      <div class="card">
+        <p class="lbl">Aggregation reminders</p>
+        <ul class="tight">
+          <li>JOIN first, then WHERE, then GROUP BY, then HAVING. The step chips in <em>Watch it run</em> show this order.</li>
+          <li>With LEFT or RIGHT JOIN, count a column from the optional side — COUNT(rev.ReviewID), not COUNT(*).</li>
+          <li>Use COUNT(DISTINCT …) when the same person or item can appear more than once.</li>
+          <li>AVG of no rows is NULL, not 0.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ================= Data ================= */
+const DEFAULT = {
+  Restaurant50: { cols: ["RestaurantID", "RestaurantName", "City"], num: [0], rows: [
+    [101, "ABC Restaurant", "Harrisburg"], [102, "Tasty Bites", "Harrisburg"], [103, "Taco House", "Mechanicsburg"],
+    [104, "Pizza Corner", "Camphill"], [105, "XYZ Restaurant", "Camphill"]] },
+  Customer50: { cols: ["CustomerID", "CustomerName", "City"], num: [0], rows: [
+    [201, "Anu", "Harrisburg"], [202, "Shri", "Camphill"], [203, "Arun", "Mechanicsburg"],
+    [204, "Priya", "Harrisburg"], [205, "John", "Camphill"], [206, "AAAA", "Harrisburg"]] },
+  Review50: { cols: ["ReviewID", "RestaurantID", "CustomerID", "Rating"], num: [0, 1, 2, 3], rows: [
+    [1, 101, 201, 5], [2, 101, 202, 5], [3, 102, 202, 4], [4, 102, 203, 4],
+    [5, 101, 201, 3], [6, 102, 203, 5], [7, 104, 201, 4], [8, 105, 205, 3]] }
+};
+let DB = JSON.parse(JSON.stringify(DEFAULT));
+const LABEL = { Restaurant50: r => r.RestaurantName, Customer50: r => r.CustomerName, Review50: r => "Review " + r.ReviewID };
+
+/* ================= Engine ================= */
+const isRef = x => typeof x === "string";
+const val = (r, x) => isRef(x) ? r[x] : x.v;
+const fmtV = v => v === null || v === undefined ? "NULL" : typeof v === "string" ? `'${v}'` : String(v);
+function test(r, [a, op, b]) {
+  const A = val(r, a);
+  if (op === "IS NULL") return A === null || A === undefined;
+  const B = val(r, b);
+  if (A == null || B == null) return false;
+  if (op === "=") return cmpVal(A, B) === 0;
+  if (op === "<>") return cmpVal(A, B) !== 0;
+  if (op === "<") return cmpVal(A, B) < 0;
+  if (op === ">") return cmpVal(A, B) > 0;
+  if (op === ">=") return cmpVal(A, B) >= 0;
+}
+const condText = c => c[1] === "IS NULL" ? `${c[0]} IS NULL` : `${c[0]} ${c[1]} ${isRef(c[2]) ? c[2] : fmtV(c[2].v)}`;
+function cmpVal(a, b) {
+  if (a === b) return 0; if (a == null) return -1; if (b == null) return 1;
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  return String(a).localeCompare(String(b), undefined, { sensitivity: "base" });
+}
+function tableRows(t, as) { const T = DB[t]; return T.rows.map(r => { const o = {}; T.cols.forEach((c, i) => o[as + "." + c] = r[i]); return o; }); }
+const colsOf = (t, as) => DB[t].cols.map(c => as + "." + c);
+function view(title, cols, rows, rowCls = {}, extra = {}) {
+  return { title, cols: cols.slice(), rows: rows.map(r => Array.isArray(r) ? r.slice() : cols.map(c => r[c] === undefined ? null : r[c])), rowCls: { ...rowCls }, hlCols: extra.hlCols || [] };
+}
+const range = (a, b, cls) => { const o = {}; for (let i = a; i < b; i++) o[i] = cls; return o; };
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+
+function aggCalc(a, rows) {
+  const name = a.fn === "COUNT" && a.col === "*" ? "COUNT(*)" : `${a.fn}(${a.distinct ? "DISTINCT " : ""}${a.col})`;
+  const shown = a.round !== undefined ? `ROUND(${name}, ${a.round})` : name;
+  if (a.fn === "COUNT" && a.col === "*") {
+    const hasNullRow = rows.some(r => Object.values(r).some(v => v === null));
+    return { value: rows.length, text: `${shown} = ${plural(rows.length, "row")}${hasNullRow ? " (a row full of NULLs still counts!)" : ""}` };
+  }
+  const all = rows.map(r => r[a.col]), nn = all.filter(v => v !== null && v !== undefined);
+  if (a.fn === "COUNT") {
+    if (a.distinct) { const u = [...new Set(nn)]; return { value: u.length, text: `${shown} = ${u.length} (different values: ${u.join(", ") || "none"})` }; }
+    return { value: nn.length, text: `${shown} = ${nn.length}${nn.length < all.length ? " (NULLs are not counted)" : ""}` };
+  }
+  if (!nn.length) return { value: null, text: `${shown} = NULL (no values)` };
+  if (a.fn === "AVG") { const s = nn.reduce((x, y) => x + y, 0), v = s / nn.length; return { value: v, text: `${shown} = (${nn.join(" + ")}) ÷ ${nn.length} = ${fmtAgg(a, v)}` }; }
+  const v = a.fn === "MIN" ? Math.min(...nn) : Math.max(...nn);
+  return { value: v, text: `${shown} of (${nn.join(", ")}) = ${v}` };
+}
+function fmtAgg(a, v) { if (v === null || v === undefined) return null; if (a.fn === "AVG") return v.toFixed(a.round !== undefined ? a.round : 4); return v; }
+
+function runPlan(P, withSteps = true, tag = "", phaseOverride = null) {
+  const steps = [];
+  const S = (phase, text, panels, out) => { if (withSteps) steps.push({ phase: phaseOverride || phase, text: tag + text, panels, out }); };
+  const amap = { [P.from.as]: P.from.t }; (P.joins || []).forEach(j => amap[j.as] = j.t);
+  const counts = {}; Object.values(amap).forEach(t => counts[t] = (counts[t] || 0) + 1);
+  const lbl = (r, aliases) => { for (const as of aliases) { const t = amap[as], pk = as + "." + DB[t].cols[0]; if (r[pk] !== null && r[pk] !== undefined) { const o = {}; DB[t].cols.forEach(c => o[c] = r[as + "." + c]); return LABEL[t](o) + (counts[t] > 1 ? ` (${as})` : ""); } } return "This row"; };
+  let curCols = colsOf(P.from.t, P.from.as), cur = tableRows(P.from.t, P.from.as), aliases = [P.from.as];
+  S("FROM", `FROM ${P.from.t}${P.from.as !== P.from.t ? " AS " + P.from.as : ""}: start with all ${plural(cur.length, "row")}.`, [], view(`${P.from.t}${P.from.as !== P.from.t ? " AS " + P.from.as : ""}`, curCols, cur));
+  (P.joins || []).forEach((j, ji) => {
+    const rCols = colsOf(j.t, j.as), R = tableRows(j.t, j.as), newCols = curCols.concat(rCols), out = [];
+    const nul = cs => Object.fromEntries(cs.map(c => [c, null]));
+    const leftTitle = ji === 0 ? `${P.from.t} AS ${P.from.as}` : "Rows so far";
+    const jname = j.label || `${j.type} JOIN`;
+    const onTxt = j.onLabel || "ON " + j.on.map(condText).join(" AND ");
+    const leftSide = c => isRef(c) && curCols.includes(c);
+    const desc = (r, mine) => j.on.filter(c => c[1] !== "IS NULL").map(c => { const ref = mine(c[0]) ? c[0] : mine(c[2]) ? c[2] : null; return ref ? `${ref} is ${fmtV(r[ref])}` : null; }).filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(", ");
+    const onRefs = j.on.flatMap(c => [c[0], c[2]]).filter(isRef);
+    const lh = { hlCols: onRefs.filter(c => curCols.includes(c)) }, rh = { hlCols: onRefs.filter(c => rCols.includes(c)) };
+    if (j.type !== "RIGHT") {
+      cur.forEach((l, li) => {
+        const m = []; R.forEach((r, ri) => { if (j.on.every(c => test({ ...l, ...r }, c))) m.push(ri); });
+        const before = out.length;
+        m.forEach(ri => out.push({ ...l, ...R[ri] }));
+        if (!m.length && j.type === "LEFT") out.push({ ...l, ...nul(rCols) });
+        const who = lbl(l, aliases);
+        const res = m.length ? `match${m.length === 1 ? "es" : ""} ${m.map(ri => lbl(R[ri], [j.as])).join(", ")}${m.length > 1 ? ` (${m.length} rows)` : ""}.`
+          : j.type === "LEFT" ? "no match. LEFT JOIN keeps it and fills the right side with NULL." : `no match, so ${jname} drops it.`;
+        S("JOIN", `${jname} ${j.t} AS ${j.as} ${onTxt}. ${who} (${desc(l, leftSide)}): ${res}`,
+          [view(leftTitle, curCols, cur, { [li]: "cur" }, lh), view(`${j.t} AS ${j.as}`, rCols, R, Object.fromEntries(m.map(i => [i, "match"])), rh)],
+          view("Joined rows so far", newCols, out, range(before, out.length, "new")));
+      });
+    } else {
+      const rightSide = c => isRef(c) && rCols.includes(c);
+      R.forEach((r, ri) => {
+        const m = []; cur.forEach((l, li) => { if (j.on.every(c => test({ ...l, ...r }, c))) m.push(li); });
+        const before = out.length;
+        m.forEach(li => out.push({ ...cur[li], ...r }));
+        if (!m.length) out.push({ ...nul(curCols), ...r });
+        const res = m.length ? `matches ${m.map(li => lbl(cur[li], aliases)).join(", ")}.` : "no match. RIGHT JOIN keeps it and fills the left side with NULL.";
+        S("JOIN", `RIGHT JOIN keeps every ${j.t} row. ${lbl(r, [j.as])} (${desc(r, rightSide)}): ${res}`,
+          [view(leftTitle, curCols, cur, Object.fromEntries(m.map(i => [i, "match"])), lh), view(`${j.t} AS ${j.as}`, rCols, R, { [ri]: "cur" }, rh)],
+          view("Joined rows so far", newCols, out, range(before, out.length, "new")));
+      });
+    }
+    cur = out; curCols = newCols; aliases.push(j.as);
+  });
+  if (P.where) {
+    const keep = cur.map(r => P.where.every(c => test(r, c))), n = keep.filter(Boolean).length;
+    S("WHERE", `WHERE ${P.where.map(condText).join(" AND ")}: keeps ${n} of ${plural(cur.length, "row")}.${P.whereNote ? " " + P.whereNote : ""}`, [],
+      view("Rows so far", curCols, cur, Object.fromEntries(keep.map((k, i) => [i, k ? "" : "drop"]).filter(x => x[1]))));
+    cur = cur.filter((_, i) => keep[i]);
+  }
+  let groups = null; const aggDef = ref => (P.aggs || []).find(a => a.as === ref);
+  if (P.group) {
+    const keys = P.group.keys, gm = new Map();
+    cur.forEach(r => { const k = JSON.stringify(keys.map(c => r[c])); if (!gm.has(k)) gm.set(k, []); gm.get(k).push(r); });
+    groups = [...gm.values()].map(rows => ({ first: rows[0], rows, agg: {} }));
+    if (!keys.length && !groups.length) groups = [{ first: {}, rows: [], agg: {} }];
+    const gl = g => keys.length ? keys.map(k => fmtV(g.first[k]).replace(/'/g, "")).join(", ") : "All rows";
+    const aggCols = (P.aggs || []).map(a => a.col).filter(c => c !== "*");
+    let show = P.showCols || [...new Set(keys.concat(aggCols))];
+    if (!show.length) show = curCols;
+    const gRows = [], gCls = {};
+    groups.forEach((g, gi) => g.rows.forEach(r => { gCls[gRows.length] = "g" + (gi % 2); gRows.push([gl(g), ...show.map(c => r[c])]); }));
+    S("GROUP BY", keys.length ? `GROUP BY ${keys.join(", ")}: the ${plural(cur.length, "row")} fall into ${plural(groups.length, "group")}, one result row per group.` : "No GROUP BY: the aggregate treats all rows as one group, so the result is one row.",
+      [], view("Rows sorted into groups", ["Group", ...show], gRows, gCls));
+    const gCols = keys.concat(P.aggs.map(a => a.as));
+    const gView = (upto, cls) => view("Grouped result", gCols, groups.slice(0, upto).map(g => keys.map(k => g.first[k]).concat(P.aggs.map(a => fmtAgg(a, g.agg[a.as])))), cls);
+    groups.forEach((g, gi) => {
+      const parts = P.aggs.map(a => { const c = aggCalc(a, g.rows); g.agg[a.as] = c.value; return c.text; });
+      S("AGGREGATE", `${gl(g)}: ${parts.join("; ")}.`, [view(`Group: ${gl(g)}`, show, g.rows, {}, { hlCols: aggCols })], gView(gi + 1, { [gi]: "new" }));
+    });
+    if (P.having) {
+      let sub = null;
+      if (P.sub) {
+        const r = runPlan(P.sub.plan, false);
+        const vals = r.items.map(it => it.agg[P.sub.col]);
+        sub = Math.max(...vals);
+        S("SUBQUERY", `The subquery runs first. The derived table ${P.sub.name} holds each restaurant's average; MAX(${P.sub.col}) = ${sub.toFixed(4)}.`,
+          [view(`${P.sub.name} (derived table)`, r.result.cols, r.result.rows, Object.fromEntries(vals.map((v, i) => [i, Math.abs(v - sub) < 1e-9 ? "match" : ""]).filter(x => x[1])))], gView(groups.length, {}));
+      }
+      const keep = groups.map(g => P.having.fn(g, sub)), n = keep.filter(Boolean).length;
+      const gone = groups.filter((g, i) => !keep[i]).map(gl);
+      S("HAVING", `HAVING ${P.having.text}: keeps ${n} of ${plural(groups.length, "group")}${gone.length ? `; removes ${gone.join(", ")}` : ""}.`, [],
+        gView(groups.length, Object.fromEntries(keep.map((k, i) => [i, k ? "" : "drop"]).filter(x => x[1]))));
+      groups = groups.filter((_, i) => keep[i]);
+    }
+  }
+  let items = groups ? groups.map(g => ({ src: g.first, agg: g.agg })) : cur.map(r => ({ src: r, agg: {} }));
+  const get = (it, ref) => ref in it.agg ? it.agg[ref] : it.src[ref];
+  const outCols = P.select.map(s => s[1]);
+  const proj = it => P.select.map(s => { const a = aggDef(s[0]); const v = get(it, s[0]); return a ? fmtAgg(a, v) : (v === undefined ? null : v); });
+  S("SELECT", `SELECT shows ${plural(outCols.length, "column")}: ${outCols.join(", ")}.`, [], view("Result", outCols, items.map(proj)));
+  if (P.distinct) {
+    const seen = new Set(), cls = {}; const rows = items.map(proj);
+    rows.forEach((r, i) => { const k = JSON.stringify(r); if (seen.has(k)) cls[i] = "dup"; seen.add(k); });
+    const d = Object.keys(cls).length;
+    S("DISTINCT", `DISTINCT removes ${plural(d, "duplicate row")}, leaving ${rows.length - d}.`, [], view("Result", outCols, rows, cls));
+    items = items.filter((_, i) => !cls[i]);
+  }
+  if (P.order) {
+    const keyOf = (it, o) => get(it, o.ref);
+    items.sort((a, b) => { for (const o of P.order) { const c = cmpVal(keyOf(a, o), keyOf(b, o)); if (c) return o.desc ? -c : c; } return 0; });
+    S("ORDER BY", `ORDER BY ${P.order.map(o => o.ref + (o.desc ? " DESC" : "")).join(", ")}: sort the result.`, [], view("Result", outCols, items.map(proj)));
+  }
+  if (P.limit) {
+    const cls = range(P.limit, items.length, "drop");
+    let tie = "";
+    if (items.length > P.limit && P.order && cmpVal(get(items[P.limit - 1], P.order[0].ref), get(items[P.limit], P.order[0].ref)) === 0) tie = " The next row has exactly the same value, but LIMIT hides the tie.";
+    S("LIMIT", `LIMIT ${P.limit}: keep only the first ${plural(P.limit, "row")}.${tie}`, [], view("Result", outCols, items.map(proj), cls));
+    items = items.slice(0, P.limit);
+  }
+  const result = { cols: outCols, rows: items.map(proj) };
+  S("RESULT", (P.done ? P.done + " " : "") + `Final result: ${plural(result.rows.length, "row")}.`, [], view("Result", outCols, result.rows));
+  return { steps, result, items };
+}
+
+function runUnion(U) {
+  const a = runPlan(U.union[0], true, "Left half: ", "LEFT HALF"), b = runPlan(U.union[1], true, "Right half: ", "RIGHT HALF");
+  const steps = a.steps.filter(s => s.phase).concat(b.steps);
+  const cols = a.result.cols, stacked = a.result.rows.concat(b.result.rows), seen = new Set(), cls = {};
+  stacked.forEach((r, i) => { const k = JSON.stringify(r); if (seen.has(k)) cls[i] = "dup"; seen.add(k); });
+  const d = Object.keys(cls).length;
+  let rows = stacked.filter((_, i) => !cls[i]);
+  steps.push({ phase: "UNION", text: `UNION stacks ${a.result.rows.length} + ${b.result.rows.length} = ${stacked.length} rows and removes ${plural(d, "duplicate")}, leaving ${rows.length}.`,
+    panels: [view("Left half result", cols, a.result.rows), view("Right half result", cols, b.result.rows)], out: view("Stacked rows", cols, stacked, cls) });
+  const oi = U.order.map(o => cols.indexOf(o.ref));
+  rows.sort((x, y) => { for (const i of oi) { const c = cmpVal(x[i], y[i]); if (c) return c; } return 0; });
+  steps.push({ phase: "ORDER BY", text: `ORDER BY ${U.order.map(o => o.ref).join(", ")}: NULLs sort first.`, panels: [], out: view("Result", cols, rows) });
+  steps.push({ phase: "RESULT", text: (U.done ? U.done + " " : "") + `Final result: ${plural(rows.length, "row")}.`, panels: [], out: view("Result", cols, rows) });
+  return { steps, result: { cols, rows } };
+}
+const run = Q => Q.plan.union ? runUnion(Q.plan) : runPlan(Q.plan);
+
+/* ================= Setup script (slide 2) ================= */
+const SETUP = [
+`CREATE DATABASE GoogleMapsReview;
+USE GoogleMapsReview;`,
+`CREATE TABLE Restaurant50 (
+    RestaurantID INT AUTO_INCREMENT
+        PRIMARY KEY,
+    RestaurantName VARCHAR(25),
+    City VARCHAR(25)
+) AUTO_INCREMENT = 101;
+
+INSERT INTO Restaurant50
+    (RestaurantName, City)
+VALUES
+('ABC Restaurant', 'Harrisburg'),
+('Tasty Bites',    'Harrisburg'),
+('Taco House',     'Mechanicsburg'),
+('Pizza Corner',   'Camphill'),
+('XYZ Restaurant', 'Camphill');`,
+`CREATE TABLE Customer50 (
+    CustomerID INT AUTO_INCREMENT
+        PRIMARY KEY,
+    CustomerName VARCHAR(25),
+    City VARCHAR(25)
+) AUTO_INCREMENT = 201;
+
+INSERT INTO Customer50
+    (CustomerName, City)
+VALUES
+('Anu',   'Harrisburg'),
+('Shri',  'Camphill'),
+('Arun',  'Mechanicsburg'),
+('Priya', 'Harrisburg'),
+('John',  'Camphill'),
+('AAAA',  'Harrisburg');`,
+`CREATE TABLE Review50 (
+    ReviewID INT AUTO_INCREMENT
+        PRIMARY KEY,
+    RestaurantID INT,
+    CustomerID INT,
+    Rating INT,
+    FOREIGN KEY (RestaurantID)
+      REFERENCES Restaurant50(RestaurantID),
+    FOREIGN KEY (CustomerID)
+      REFERENCES Customer50(CustomerID)
+);
+
+INSERT INTO Review50
+    (RestaurantID, CustomerID, Rating)
+VALUES
+(101, 201, 5), (101, 202, 5),
+(102, 202, 4), (102, 203, 4),
+(101, 201, 3), (102, 203, 5),
+(104, 201, 4), (105, 205, 3);`];
+
+/* ================= Thinking flows (from the slide notes) ================= */
+const FLOWS = {
+"Q1": [
+"Show EACH REVIEW with the restaurant name.",
+"Main thing = Review",
+"FROM Review50",
+"Need restaurant name",
+"JOIN Restaurant50",
+"How are they connected?",
+"RestaurantID"
+],
+"Q2": [
+"Show EACH REVIEW with the restaurant name, customer name, and rating.",
+"Main thing = Review",
+"FROM Review50",
+"Need restaurant name",
+"JOIN Restaurant50",
+"How are Review and Restaurant connected?",
+"RestaurantID",
+"ON rev.RestaurantID = rest.RestaurantID",
+"Also need customer name",
+"JOIN Customer50",
+"How are Review and Customer connected?",
+"CustomerID",
+"ON rev.CustomerID = cust.CustomerID",
+"Choose what we want to display",
+"ReviewID + RestaurantName + CustomerName + Rating",
+"Sort by ReviewID"
+],
+"Q3": [
+"For EACH RESTAURANT that has reviews, show the number of reviews and average rating.",
+"We are analyzing the reviews",
+"FROM Review50",
+"Need restaurant name",
+"JOIN Restaurant50",
+"How are Review and Restaurant connected?",
+"RestaurantID",
+"ON rev.RestaurantID = rest.RestaurantID",
+"Now reviews are connected to their restaurants",
+"Need ONE result for EACH restaurant",
+"GROUP BY Restaurant",
+"GROUP BY rest.RestaurantID, rest.RestaurantName",
+"For each restaurant group: How many reviews?",
+"COUNT(rev.ReviewID)",
+"What is the average rating?",
+"AVG(rev.Rating)",
+"Display: RestaurantName + NumberOfReviews + AverageRating",
+"Sort by RestaurantID"
+],
+"Q4": [
+"For EACH CUSTOMER who has written reviews, show how many reviews they wrote and their average rating given.",
+"We are analyzing reviews",
+"FROM Review50",
+"Need customer name",
+"JOIN Customer50",
+"How are Review and Customer connected?",
+"CustomerID",
+"ON rev.CustomerID = cust.CustomerID",
+"Now reviews are connected to their customers",
+"Need ONE result for EACH customer",
+"GROUP BY Customer",
+"GROUP BY cust.CustomerID, cust.CustomerName",
+"For each customer group: How many reviews did they write?",
+"COUNT(rev.ReviewID)",
+"What is the average of the ratings they gave?",
+"AVG(rev.Rating)",
+"Display: CustomerName + ReviewsWritten + AverageRatingGiven",
+"Sort by CustomerID"
+],
+"Q5": [
+"Show EVERY RESTAURANT with its reviews, including restaurants with NO reviews.",
+"Main thing = Restaurant",
+"FROM Restaurant50",
+"Need review information",
+"LEFT JOIN Review50",
+"Why LEFT JOIN?",
+"Because we want to KEEP EVERY restaurant, even if it has no matching review",
+"How are Restaurant and Review connected?",
+"RestaurantID",
+"ON rest.RestaurantID = rev.RestaurantID",
+"For restaurants with reviews: show ReviewID and Rating",
+"For restaurants with no reviews: ReviewID and Rating become NULL",
+"Display: RestaurantName + ReviewID + Rating",
+"Sort first by RestaurantID, then by ReviewID"
+],
+"Q6": [
+"Show EVERY RESTAURANT with the number of reviews and average rating, including restaurants with NO reviews.",
+"Main thing = Restaurant",
+"FROM Restaurant50",
+"Need review information",
+"LEFT JOIN Review50",
+"Why LEFT JOIN?",
+"Because we want to KEEP EVERY restaurant, even if it has no matching review",
+"How are Restaurant and Review connected?",
+"RestaurantID",
+"ON rest.RestaurantID = rev.RestaurantID",
+"One restaurant may have multiple reviews",
+"Put all reviews of the same restaurant together",
+"GROUP BY rest.RestaurantID, rest.RestaurantName",
+"For each restaurant: count the number of reviews",
+"COUNT(rev.ReviewID)",
+"Name it NumberOfReviews",
+"For each restaurant: calculate the average rating",
+"AVG(rev.Rating)",
+"Round the average to 2 decimal places",
+"ROUND(AVG(rev.Rating), 2)",
+"Name it AverageRating",
+"For restaurants with no reviews: NumberOfReviews = 0 AverageRating = NULL",
+"Display: RestaurantName + NumberOfReviews + AverageRating",
+"Sort by RestaurantID"
+],
+"Q8": [
+"Show restaurants that have NEVER been reviewed.",
+"Main thing = Restaurant",
+"FROM Restaurant50",
+"Need to check whether each restaurant has a review",
+"LEFT JOIN Review50",
+"Why LEFT JOIN?",
+"Because we want to KEEP EVERY restaurant, even if it has no matching review",
+"How are Restaurant and Review connected?",
+"RestaurantID",
+"ON rest.RestaurantID = rev.RestaurantID",
+"For restaurants with reviews: ReviewID will have a value",
+"For restaurants with no reviews: ReviewID becomes NULL",
+"We want ONLY restaurants with no reviews",
+"WHERE rev.ReviewID IS NULL",
+"Display: RestaurantName + City"
+],
+"Q9": [
+"Show EVERY CUSTOMER with the number of reviews they have written, including customers who have written NO reviews.",
+"Main thing = Customer",
+"FROM Customer50",
+"Need review information",
+"LEFT JOIN Review50",
+"Why LEFT JOIN?",
+"Because we want to KEEP EVERY customer, even if they have no matching review",
+"How are Customer and Review connected?",
+"CustomerID",
+"ON cust.CustomerID = rev.CustomerID",
+"One customer may have written multiple reviews",
+"Put all reviews written by the same customer together",
+"GROUP BY cust.CustomerID, cust.CustomerName",
+"For each customer: count the number of reviews written",
+"COUNT(rev.ReviewID)",
+"Name it ReviewsWritten",
+"For customers with reviews: ReviewsWritten shows the number of reviews",
+"For customers with no reviews: ReviewsWritten = 0",
+"Display: CustomerName + ReviewsWritten",
+"Sort by CustomerID"
+],
+"Q10": [
+"Show EVERY CUSTOMER with their reviews, including customers with NO reviews.",
+"Main thing = Customer",
+"Customer50 is on the RIGHT side",
+"RIGHT JOIN Customer50",
+"Why RIGHT JOIN?",
+"Because we want to KEEP EVERY customer from the RIGHT table, even if they have no matching review",
+"Need review information",
+"FROM Review50",
+"How are Review and Customer connected?",
+"CustomerID",
+"ON rev.CustomerID = cust.CustomerID",
+"For customers with reviews: show ReviewID and Rating",
+"For customers with no reviews: ReviewID and Rating become NULL",
+"Display: CustomerName + ReviewID + Rating",
+"Sort first by CustomerID, then by ReviewID"
+],
+"Q11": [
+"Show customers who have NEVER written a review.",
+"Main thing = Customer",
+"Customer50 is on the RIGHT side",
+"RIGHT JOIN Customer50",
+"Why RIGHT JOIN?",
+"Because we want to KEEP EVERY customer from the RIGHT table, even if they have no matching review",
+"Need to check whether each customer has a review",
+"FROM Review50",
+"How are Review and Customer connected?",
+"CustomerID",
+"ON rev.CustomerID = cust.CustomerID",
+"For customers with reviews: ReviewID will have a value",
+"For customers with no reviews: ReviewID becomes NULL",
+"We want ONLY customers with no reviews",
+"WHERE rev.ReviewID IS NULL",
+"Display: CustomerName + City"
+],
+"Q12": [
+"Show EVERY RESTAURANT with the number of reviews, including restaurants with NO reviews.",
+"Main thing = Restaurant",
+"Restaurant50 is on the RIGHT side",
+"RIGHT JOIN Restaurant50",
+"Why RIGHT JOIN?",
+"Because we want to KEEP EVERY restaurant from the RIGHT table, even if it has no matching review",
+"Need review information",
+"FROM Review50",
+"How are Review and Restaurant connected?",
+"RestaurantID",
+"ON rev.RestaurantID = rest.RestaurantID",
+"One restaurant may have multiple reviews",
+"Put all reviews of the same restaurant together",
+"GROUP BY rest.RestaurantID, rest.RestaurantName",
+"For each restaurant: count the number of reviews",
+"COUNT(rev.ReviewID)",
+"Name it NumberOfReviews",
+"For restaurants with reviews: NumberOfReviews shows the number of reviews",
+"For restaurants with no reviews: NumberOfReviews = 0",
+"Display: RestaurantName + NumberOfReviews",
+"Sort by RestaurantID"
+],
+"Q13": [
+"Show EVERY RESTAURANT and EVERY CUSTOMER, matched through their reviews.",
+"Need to keep all records from BOTH sides",
+"MySQL does not directly support FULL OUTER JOIN",
+"So combine LEFT JOIN and RIGHT JOIN using UNION",
+"FIRST PART: Keep EVERY restaurant",
+"Main thing = Restaurant",
+"FROM Restaurant50",
+"LEFT JOIN Review50",
+"Why LEFT JOIN?",
+"Because we want to KEEP EVERY restaurant, even if it has no matching review",
+"How are Restaurant and Review connected?",
+"RestaurantID",
+"ON rest.RestaurantID = rev.RestaurantID",
+"Now connect the review to the customer",
+"LEFT JOIN Customer50",
+"How are Review and Customer connected?",
+"CustomerID",
+"ON rev.CustomerID = cust.CustomerID",
+"This first part keeps EVERY restaurant",
+"Now we also need to make sure EVERY customer is included",
+"UNION",
+"SECOND PART: Keep EVERY customer",
+"FROM Restaurant50",
+"RIGHT JOIN Review50",
+"Match Restaurant and Review using RestaurantID",
+"ON rest.RestaurantID = rev.RestaurantID",
+"RIGHT JOIN Customer50",
+"Why RIGHT JOIN?",
+"Because Customer50 is on the RIGHT side and we want to KEEP EVERY customer, even if they have no matching review",
+"How are Review and Customer connected?",
+"CustomerID",
+"ON rev.CustomerID = cust.CustomerID",
+"UNION combines the two results",
+"Duplicate matching rows are removed",
+"Final result keeps: EVERY Restaurant + EVERY Customer",
+"For matched reviews: ReviewID + RestaurantName + CustomerName + Rating",
+"For restaurants with no reviews: ReviewID, CustomerName and Rating can be NULL",
+"For customers with no reviews: ReviewID, RestaurantName and Rating can be NULL",
+"Display: ReviewID + RestaurantName + CustomerName + Rating",
+"Sort by ReviewID"
+],
+"Q21": [
+"Show restaurant information together with its matching review information.",
+"Need information from: Restaurant50 + Review50",
+"FROM Restaurant50",
+"NATURAL JOIN Review50",
+"Why NATURAL JOIN?",
+"Because both tables have a column with the SAME name",
+"What common column do they have?",
+"RestaurantID",
+"NATURAL JOIN automatically uses the common column",
+"So we do NOT need to write: ON Restaurant50.RestaurantID = Review50.RestaurantID",
+"Only rows where RestaurantID matches in BOTH tables are included",
+"Restaurants with NO reviews are NOT included",
+"SELECT *",
+"Display ALL columns from the joined result",
+"The common RestaurantID column appears only ONCE",
+"Sort by ReviewID"
+],
+"Q22": [
+"Show each REVIEWED restaurant with the number of reviews and its average rating.",
+"Need information from: Restaurant50 + Review50",
+"FROM Restaurant50",
+"NATURAL JOIN Review50",
+"Why NATURAL JOIN?",
+"Because both tables have a column with the SAME name",
+"What common column do they have?",
+"RestaurantID",
+"NATURAL JOIN automatically matches the two tables using RestaurantID",
+"So we do NOT need to write: ON Restaurant50.RestaurantID = Review50.RestaurantID",
+"Only restaurants with matching reviews are included",
+"Restaurants with NO reviews are NOT included",
+"One restaurant may have multiple reviews",
+"Put all reviews of the same restaurant together",
+"GROUP BY RestaurantID, RestaurantName",
+"For each restaurant: count the number of reviews",
+"COUNT(*)",
+"Name it NumberOfReviews",
+"For each restaurant: calculate the average rating",
+"AVG(Rating)",
+"Name it AverageRating",
+"Display: RestaurantName + NumberOfReviews + AverageRating",
+"Sort by RestaurantID"
+],
+"Q24": [
+"Show each review with: RestaurantName + CustomerName + Rating",
+"Main thing = Review",
+"FROM Review50",
+"Need restaurant information",
+"INNER JOIN Restaurant50",
+"How are Review and Restaurant connected?",
+"RestaurantID",
+"Both tables have the column named RestaurantID",
+"So use: USING (RestaurantID)",
+"Why USING?",
+"Because the joining column has the SAME name in both tables",
+"USING (RestaurantID) is a shorter way of writing: ON rev.RestaurantID = rest.RestaurantID",
+"Now need customer information",
+"INNER JOIN Customer50",
+"How are Review and Customer connected?",
+"CustomerID",
+"Both tables have the column named CustomerID",
+"So use: USING (CustomerID)",
+"USING (CustomerID) is a shorter way of writing: ON rev.CustomerID = cust.CustomerID",
+"Why INNER JOIN?",
+"Because we only want rows where the matching Restaurant and Customer exist",
+"Display: ReviewID + RestaurantName + CustomerName + Rating",
+"Sort by ReviewID"
+],
+"Q25": [
+"Show each REVIEWED restaurant with: number of reviews + lowest rating + highest rating + average rating",
+"Main thing = Review",
+"FROM Review50",
+"Need restaurant information",
+"INNER JOIN Restaurant50",
+"Why INNER JOIN?",
+"Because we only want restaurants that have matching reviews",
+"How are Review and Restaurant connected?",
+"RestaurantID",
+"ON rev.RestaurantID = rest.RestaurantID",
+"One restaurant may have multiple reviews",
+"Put all reviews of the same restaurant together",
+"GROUP BY rest.RestaurantID, rest.RestaurantName",
+"For each restaurant: count the number of reviews",
+"COUNT(rev.ReviewID)",
+"Name it Reviews",
+"Find the lowest rating for each restaurant",
+"MIN(rev.Rating)",
+"Name it Lowest",
+"Find the highest rating for each restaurant",
+"MAX(rev.Rating)",
+"Name it Highest",
+"Calculate the average rating for each restaurant",
+"AVG(rev.Rating)",
+"Name it Average",
+"Display: RestaurantName + Reviews + Lowest + Highest + Average",
+"Sort by RestaurantID"
+],
+"Q27": [
+"Show each customer city with: number of reviews written + average rating given",
+"Main thing = Review",
+"FROM Review50",
+"Need customer information",
+"INNER JOIN Customer50",
+"Why INNER JOIN?",
+"Because we only want reviews that have a matching customer",
+"How are Review and Customer connected?",
+"CustomerID",
+"ON rev.CustomerID = cust.CustomerID",
+"Now we know the city of each customer who wrote a review",
+"Multiple customers may be from the same city",
+"Put all reviews written by customers from the same city together",
+"GROUP BY cust.City",
+"For each city: count the number of reviews written",
+"COUNT(rev.ReviewID)",
+"Name it ReviewsWritten",
+"For each city: calculate the average rating given by customers from that city",
+"AVG(rev.Rating)",
+"Name it AverageRatingGiven",
+"Display: City + ReviewsWritten + AverageRatingGiven",
+"Sort by City"
+],
+"Q28": [
+"Show each restaurant city with: number of reviews received + average rating received",
+"Main thing = Restaurant",
+"FROM Restaurant50",
+"Need review information",
+"LEFT JOIN Review50",
+"Why LEFT JOIN?",
+"Because we want to KEEP restaurants even if they have no matching reviews",
+"How are Restaurant and Review connected?",
+"RestaurantID",
+"ON rest.RestaurantID = rev.RestaurantID",
+"Now we know the city of each restaurant",
+"Multiple restaurants may be in the same city",
+"Put all restaurants and their reviews from the same city together",
+"GROUP BY rest.City",
+"For each city: count the number of reviews received",
+"COUNT(rev.ReviewID)",
+"Name it ReviewsReceived",
+"Why COUNT(rev.ReviewID)?",
+"Because restaurants with no reviews have NULL ReviewID",
+"NULL values are not counted",
+"For each city: calculate the average rating received by restaurants in that city",
+"AVG(rev.Rating)",
+"Name it AverageRating",
+"Display: City + ReviewsReceived + AverageRating",
+"Sort by City"
+],
+"Q29": [
+"Show each restaurant that received 5-star reviews, with the number of 5-star reviews.",
+"Main thing = Review",
+"FROM Review50",
+"Need restaurant information",
+"INNER JOIN Restaurant50",
+"Why INNER JOIN?",
+"Because we only want reviews that have a matching restaurant",
+"How are Review and Restaurant connected?",
+"RestaurantID",
+"ON rev.RestaurantID = rest.RestaurantID",
+"We only want reviews with a rating of 5",
+"Filter the individual review rows BEFORE grouping",
+"WHERE rev.Rating = 5",
+"Now only 5-star reviews remain",
+"One restaurant may have multiple 5-star reviews",
+"Put all 5-star reviews of the same restaurant together",
+"GROUP BY rest.RestaurantID, rest.RestaurantName",
+"For each restaurant: count the number of 5-star reviews",
+"COUNT(rev.ReviewID)",
+"Name it FiveStarReviews",
+"Display: RestaurantName + FiveStarReviews",
+"Important: Restaurants with NO 5-star reviews will NOT appear"
+],
+"Q31": [
+"Show restaurants whose average rating is at least 4.",
+"Main thing = Review",
+"FROM Review50",
+"Need restaurant information",
+"INNER JOIN Restaurant50",
+"Why INNER JOIN?",
+"Because we only want restaurants that have matching reviews",
+"How are Review and Restaurant connected?",
+"RestaurantID",
+"ON rev.RestaurantID = rest.RestaurantID",
+"One restaurant may have multiple reviews",
+"Put all reviews of the same restaurant together",
+"GROUP BY rest.RestaurantID, rest.RestaurantName",
+"For each restaurant: calculate the average rating",
+"AVG(rev.Rating)",
+"Name it AverageRating",
+"Now we only want restaurants whose average rating is at least 4",
+"Need to filter the GROUPS after calculating the average",
+"HAVING AVG(rev.Rating) >= 4",
+"Why HAVING instead of WHERE?",
+"Because AVG() is calculated AFTER the rows are grouped",
+"WHERE filters individual rows BEFORE GROUP BY",
+"HAVING filters groups AFTER GROUP BY",
+"Display: RestaurantName + AverageRating",
+"Sort by RestaurantID"
+],
+"Q32": [
+"Show customers who wrote more than one review.",
+"Main thing = Review",
+"FROM Review50",
+"Need customer information",
+"INNER JOIN Customer50",
+"Why INNER JOIN?",
+"Because we only want reviews that have a matching customer",
+"How are Review and Customer connected?",
+"CustomerID",
+"ON rev.CustomerID = cust.CustomerID",
+"One customer may have written multiple reviews",
+"Put all reviews written by the same customer together",
+"GROUP BY cust.CustomerID, cust.CustomerName",
+"For each customer: count the number of reviews written",
+"COUNT(rev.ReviewID)",
+"Name it ReviewsWritten",
+"Now we only want customers who wrote more than one review",
+"Need to filter the GROUPS after counting the reviews",
+"HAVING COUNT(rev.ReviewID) > 1",
+"Why HAVING instead of WHERE?",
+"Because COUNT() is calculated AFTER the rows are grouped",
+"WHERE filters individual rows BEFORE GROUP BY",
+"HAVING filters groups AFTER GROUP BY",
+"Display: CustomerName + ReviewsWritten",
+"Sort by CustomerID"
+],
+"Q33": [
+"Show the restaurant with the HIGHEST average rating.",
+"Main thing = Review",
+"FROM Review50",
+"Need restaurant information",
+"INNER JOIN Restaurant50",
+"Why INNER JOIN?",
+"Because we only want restaurants that have matching reviews",
+"How are Review and Restaurant connected?",
+"RestaurantID",
+"ON rev.RestaurantID = rest.RestaurantID",
+"One restaurant may have multiple reviews",
+"Put all reviews of the same restaurant together",
+"GROUP BY rest.RestaurantID, rest.RestaurantName",
+"For each restaurant: calculate the average rating",
+"AVG(rev.Rating)",
+"Name it AverageRating",
+"Now arrange the restaurants from HIGHEST average rating to LOWEST average rating",
+"ORDER BY AverageRating DESC",
+"If two restaurants have the same average rating",
+"Sort them by RestaurantID",
+"rest.RestaurantID",
+"Now the restaurant with the highest average rating is FIRST",
+"We only want the first restaurant",
+"LIMIT 1",
+"Display: RestaurantName + AverageRating"
+]
+};
+
+/* ================= Query catalogue ================= */
+const s = (ref, name) => [ref, name || ref.split(".").pop()];
+const J = (type, t, as, on, extra = {}) => Object.assign({ type, t, as, on }, extra);
+const eq = (a, b) => [a, "=", b];
+const Jrest = J("INNER", "Restaurant50", "rest", [eq("rev.RestaurantID", "rest.RestaurantID")]);
+const Jcust = J("INNER", "Customer50", "cust", [eq("rev.CustomerID", "cust.CustomerID")]);
+const fromRev = { t: "Review50", as: "rev" }, fromRest = { t: "Restaurant50", as: "rest" }, fromCust = { t: "Customer50", as: "cust" };
+const gRest = { keys: ["rest.RestaurantID", "rest.RestaurantName"] }, gCust = { keys: ["cust.CustomerID", "cust.CustomerName"] };
+const Lrev = J("LEFT", "Review50", "rev", [eq("rest.RestaurantID", "rev.RestaurantID")]);
+const Rcust = J("RIGHT", "Customer50", "cust", [eq("rev.CustomerID", "cust.CustomerID")]);
+const NJ = (t, on, lab) => J("INNER", t, t, on, { label: "NATURAL JOIN", onLabel: lab });
+
+const PARTS = [
+  { id: "p1", title: "1. INNER JOIN", intro: "An INNER JOIN keeps only the rows that have a match in both tables." },
+  { id: "p2", title: "2. LEFT JOIN", intro: "A LEFT JOIN keeps every row from the left table (the one after FROM), even when there is no match in the right table. Missing values are filled with NULL." },
+  { id: "p3", title: "3. RIGHT JOIN", intro: "A RIGHT JOIN is the mirror image: it keeps every row from the right table (the one after RIGHT JOIN)." },
+  { id: "p4", title: "4. FULL OUTER JOIN", intro: "A FULL OUTER JOIN keeps everything from both sides. MySQL doesn't support it directly, so we combine a LEFT JOIN and a RIGHT JOIN with UNION." },
+  { id: "p6", title: "6. NATURAL JOIN", intro: "A NATURAL JOIN has no ON clause. MySQL joins on every column that has the same name in both tables." },
+  { id: "p7", title: "7. More aggregation with JOINs", intro: "MIN, MAX, COUNT(DISTINCT …), grouping by city, and WHERE before GROUP BY." },
+  { id: "p8", title: "8. HAVING with JOINs", intro: "HAVING filters groups after aggregation; WHERE filters rows before it." }
+];
+
+const Q = [
+/* ---------- 1. INNER JOIN ---------- */
+{ id: "Q1", part: "p1", slide: true, title: "Show each review with the restaurant's name",
+  sql: `SELECT rev.ReviewID, rest.RestaurantName,
+       rev.Rating
+FROM Review50 AS rev
+INNER JOIN Restaurant50 AS rest
+    ON rev.RestaurantID = rest.RestaurantID
+ORDER BY rev.ReviewID;`,
+  steps: [["Main thing = Review", "FROM Review50"], ["Need the restaurant name", "JOIN Restaurant50"], ["How are they connected? RestaurantID", "ON rev.RestaurantID = rest.RestaurantID"], ["Display ReviewID + RestaurantName + Rating, sorted", "ORDER BY rev.ReviewID"]],
+  plan: { from: fromRev, joins: [Jrest], select: [s("rev.ReviewID"), s("rest.RestaurantName"), s("rev.Rating")], order: [{ ref: "rev.ReviewID" }] },
+  callouts: [["", "<strong>Table aliases.</strong> Review50 AS rev gives the table a short nickname, so we can write rev.Rating instead of Review50.Rating. The word AS is optional: Review50 rev works too. Aliases are used throughout this guide."]] },
+{ id: "Q2", part: "p1", slide: true, title: "Show each review with the restaurant name AND the customer name (three tables)",
+  sql: `SELECT rev.ReviewID, rest.RestaurantName,
+       cust.CustomerName, rev.Rating
+FROM Review50 AS rev
+INNER JOIN Restaurant50 AS rest
+    ON rev.RestaurantID = rest.RestaurantID
+INNER JOIN Customer50 AS cust
+    ON rev.CustomerID = cust.CustomerID
+ORDER BY rev.ReviewID;`,
+  steps: [["Main thing = Review", "FROM Review50"], ["Need the restaurant name", "JOIN Restaurant50"], ["Review ↔ Restaurant through RestaurantID", "ON rev.RestaurantID = rest.RestaurantID"], ["Also need the customer name", "JOIN Customer50"], ["Review ↔ Customer through CustomerID", "ON rev.CustomerID = cust.CustomerID"], ["Display ReviewID + RestaurantName + CustomerName + Rating", "ORDER BY rev.ReviewID"]],
+  plan: { from: fromRev, joins: [Jrest, Jcust], select: [s("rev.ReviewID"), s("rest.RestaurantName"), s("cust.CustomerName"), s("rev.Rating")], order: [{ ref: "rev.ReviewID" }] },
+  callouts: [["", "The first ON connects Review50 → Restaurant50 through RestaurantID. The second ON connects Review50 → Customer50 through CustomerID."]] },
+{ id: "Q3", part: "p1", slide: true, title: "For each restaurant that has reviews, show the restaurant name, number of reviews (count), and average rating",
+  sql: `SELECT rest.RestaurantName,
+       COUNT(rev.ReviewID) AS NumberOfReviews,
+       AVG(rev.Rating) AS AverageRating
+FROM Review50 AS rev
+INNER JOIN Restaurant50 AS rest
+    ON rev.RestaurantID = rest.RestaurantID
+GROUP BY rest.RestaurantID,
+         rest.RestaurantName
+ORDER BY rest.RestaurantID;`,
+  steps: [["We are analyzing the reviews", "FROM Review50"], ["Need the restaurant name", "JOIN Restaurant50"], ["Connected through RestaurantID", "ON rev.RestaurantID = rest.RestaurantID"], ["Need ONE result for EACH restaurant", "GROUP BY rest.RestaurantID, rest.RestaurantName"], ["How many reviews?", "COUNT(rev.ReviewID)"], ["What is the average rating?", "AVG(rev.Rating)"], ["Sort by restaurant", "ORDER BY rest.RestaurantID"]],
+  plan: { from: fromRev, joins: [Jrest], group: gRest, aggs: [{ as: "NumberOfReviews", fn: "COUNT", col: "rev.ReviewID" }, { as: "AverageRating", fn: "AVG", col: "rev.Rating" }],
+    select: [s("rest.RestaurantName"), s("NumberOfReviews"), s("AverageRating")], order: [{ ref: "rest.RestaurantID" }] },
+  callouts: [["", "<strong>ABC Restaurant:</strong> (5 + 5 + 3) ÷ 3 = 4.3333. MySQL shows 4 decimal places when averaging an INT column."],
+    ["warn", "<strong>Where is Taco House?</strong> It has no reviews, so INNER JOIN found no match and dropped it. The result looks complete, but one restaurant is silently missing. LEFT JOIN fixes this (Section 2)."]],
+  compare: { id: "Q6", cols: ["RestaurantName", "NumberOfReviews"] } },
+{ id: "Q4", part: "p1", slide: true, title: "For each customer who has written reviews, show the customer's name, how many reviews they wrote, and their average rating given",
+  sql: `SELECT cust.CustomerName,
+       COUNT(rev.ReviewID) AS ReviewsWritten,
+       AVG(rev.Rating) AS AverageRatingGiven
+FROM Review50 AS rev
+INNER JOIN Customer50 AS cust
+    ON rev.CustomerID = cust.CustomerID
+GROUP BY cust.CustomerID, cust.CustomerName
+ORDER BY cust.CustomerID;`,
+  steps: [["We are analyzing the reviews", "FROM Review50"], ["Need the customer name", "JOIN Customer50"], ["Connected through CustomerID", "ON rev.CustomerID = cust.CustomerID"], ["Need ONE result for EACH customer", "GROUP BY cust.CustomerID, cust.CustomerName"], ["How many reviews did they write?", "COUNT(rev.ReviewID)"], ["Average of the ratings they gave", "AVG(rev.Rating)"], ["Sort by customer", "ORDER BY cust.CustomerID"]],
+  plan: { from: fromRev, joins: [Jcust], group: gCust, aggs: [{ as: "ReviewsWritten", fn: "COUNT", col: "rev.ReviewID" }, { as: "AverageRatingGiven", fn: "AVG", col: "rev.Rating" }],
+    select: [s("cust.CustomerName"), s("ReviewsWritten"), s("AverageRatingGiven")], order: [{ ref: "cust.CustomerID" }] },
+  callouts: [["warn", "Priya and AAAA are missing for the same reason — they have no reviews to match."]],
+  compare: { id: "Q9", cols: ["CustomerName", "ReviewsWritten"] } },
+/* ---------- 2. LEFT JOIN ---------- */
+{ id: "Q5", part: "p2", slide: true, title: "Show EVERY RESTAURANT with its reviews, including restaurants that have no reviews",
+  sql: `SELECT rest.RestaurantName, rev.ReviewID,
+       rev.Rating
+FROM Restaurant50 AS rest
+LEFT JOIN Review50 AS rev
+    ON rest.RestaurantID = rev.RestaurantID
+ORDER BY rest.RestaurantID, rev.ReviewID;`,
+  steps: [["Main thing = Restaurant", "FROM Restaurant50"], ["Need reviews, but KEEP EVERY restaurant", "LEFT JOIN Review50"], ["Connected through RestaurantID", "ON rest.RestaurantID = rev.RestaurantID"], ["No review? ReviewID and Rating become NULL"], ["Sort by restaurant, then review", "ORDER BY rest.RestaurantID, rev.ReviewID"]],
+  plan: { from: fromRest, joins: [Lrev], select: [s("rest.RestaurantName"), s("rev.ReviewID"), s("rev.Rating")], order: [{ ref: "rest.RestaurantID" }, { ref: "rev.ReviewID" }] },
+  callouts: [["", "Taco House now appears, with NULL in the review columns. This is the main reason to use LEFT JOIN."]] },
+{ id: "Q6", part: "p2", slide: true, title: "Number of reviews and average rating for EVERY restaurant",
+  sql: `SELECT rest.RestaurantName,
+       COUNT(rev.ReviewID) AS NumberOfReviews,
+       ROUND(AVG(rev.Rating), 2)
+           AS AverageRating
+FROM Restaurant50 AS rest
+LEFT JOIN Review50 AS rev
+    ON rest.RestaurantID = rev.RestaurantID
+GROUP BY rest.RestaurantID,
+         rest.RestaurantName
+ORDER BY rest.RestaurantID;`,
+  steps: [["Main thing = Restaurant", "FROM Restaurant50"], ["KEEP EVERY restaurant", "LEFT JOIN Review50"], ["Connected through RestaurantID", "ON rest.RestaurantID = rev.RestaurantID"], ["Put each restaurant's reviews together", "GROUP BY rest.RestaurantID, rest.RestaurantName"], ["Count the reviews", "COUNT(rev.ReviewID)"], ["Average, rounded to 2 decimals", "ROUND(AVG(rev.Rating), 2)"], ["No reviews → count 0, average NULL"], ["Sort by restaurant", "ORDER BY rest.RestaurantID"]],
+  plan: { from: fromRest, joins: [Lrev], group: gRest, aggs: [{ as: "NumberOfReviews", fn: "COUNT", col: "rev.ReviewID" }, { as: "AverageRating", fn: "AVG", col: "rev.Rating", round: 2 }],
+    select: [s("rest.RestaurantName"), s("NumberOfReviews"), s("AverageRating")], order: [{ ref: "rest.RestaurantID" }] },
+  callouts: [["", "Taco House shows 0 reviews and an average of NULL. There are no ratings to average, so the result is unknown, not zero. ROUND(..., 2) trims the average to two decimals."]],
+  compare: { id: "Q3", cols: ["RestaurantName", "NumberOfReviews"] } },
+{ id: "Q8", part: "p2", slide: true, title: "Which restaurants have never been reviewed?",
+  sql: `SELECT rest.RestaurantName, rest.City
+FROM Restaurant50 AS rest
+LEFT JOIN Review50 AS rev
+    ON rest.RestaurantID = rev.RestaurantID
+WHERE rev.ReviewID IS NULL;`,
+  steps: [["Main thing = Restaurant", "FROM Restaurant50"], ["KEEP EVERY restaurant", "LEFT JOIN Review50"], ["Connected through RestaurantID", "ON rest.RestaurantID = rev.RestaurantID"], ["No review? ReviewID becomes NULL"], ["Keep ONLY restaurants with no reviews", "WHERE rev.ReviewID IS NULL"], ["Display RestaurantName + City"]],
+  plan: { from: fromRest, joins: [Lrev], where: [["rev.ReviewID", "IS NULL"]], select: [s("rest.RestaurantName"), s("rest.City")] },
+  callouts: [["", "After the LEFT JOIN, unmatched restaurants have NULL in every review column. WHERE rev.ReviewID IS NULL keeps exactly those rows. Remember to write IS NULL, not = NULL."]] },
+{ id: "Q9", part: "p2", slide: true, title: "How many reviews has EVERY customer written?",
+  sql: `SELECT cust.CustomerName,
+       COUNT(rev.ReviewID) AS ReviewsWritten
+FROM Customer50 AS cust
+LEFT JOIN Review50 AS rev
+    ON cust.CustomerID = rev.CustomerID
+GROUP BY cust.CustomerID, cust.CustomerName
+ORDER BY cust.CustomerID;`,
+  steps: [["Main thing = Customer", "FROM Customer50"], ["KEEP EVERY customer", "LEFT JOIN Review50"], ["Connected through CustomerID", "ON cust.CustomerID = rev.CustomerID"], ["Put each customer's reviews together", "GROUP BY cust.CustomerID, cust.CustomerName"], ["Count reviews written (none → 0)", "COUNT(rev.ReviewID)"], ["Sort by customer", "ORDER BY cust.CustomerID"]],
+  plan: { from: fromCust, joins: [J("LEFT", "Review50", "rev", [eq("cust.CustomerID", "rev.CustomerID")])], group: gCust, aggs: [{ as: "ReviewsWritten", fn: "COUNT", col: "rev.ReviewID" }],
+    select: [s("cust.CustomerName"), s("ReviewsWritten")], order: [{ ref: "cust.CustomerID" }] },
+  callouts: [["", "Compare with the INNER JOIN version in Section 1 (Q4): Priya and AAAA now appear with 0."]],
+  compare: { id: "Q4", cols: ["CustomerName", "ReviewsWritten"] } },
+/* ---------- 3. RIGHT JOIN ---------- */
+{ id: "Q10", part: "p3", slide: true, title: "List every customer with their reviews",
+  sql: `SELECT cust.CustomerName, rev.ReviewID,
+       rev.Rating
+FROM Review50 AS rev
+RIGHT JOIN Customer50 AS cust
+    ON rev.CustomerID = cust.CustomerID
+ORDER BY cust.CustomerID, rev.ReviewID;`,
+  steps: [["Main thing = Customer, on the RIGHT side", "RIGHT JOIN Customer50"], ["Review information on the left", "FROM Review50"], ["Connected through CustomerID", "ON rev.CustomerID = cust.CustomerID"], ["No review? ReviewID and Rating become NULL"], ["Sort by customer, then review", "ORDER BY cust.CustomerID, rev.ReviewID"]],
+  plan: { from: fromRev, joins: [Rcust], select: [s("cust.CustomerName"), s("rev.ReviewID"), s("rev.Rating")], order: [{ ref: "cust.CustomerID" }, { ref: "rev.ReviewID" }] },
+  callouts: [["", "Customer50 is on the right, so all six customers are kept. Priya and AAAA appear with NULLs."]] },
+{ id: "Q11", part: "p3", slide: true, title: "Which customers have never written a review?",
+  sql: `SELECT cust.CustomerName, cust.City
+FROM Review50 AS rev
+RIGHT JOIN Customer50 AS cust
+    ON rev.CustomerID = cust.CustomerID
+WHERE rev.ReviewID IS NULL;`,
+  steps: [["Main thing = Customer, on the RIGHT side", "RIGHT JOIN Customer50"], ["Check reviews on the left", "FROM Review50"], ["Connected through CustomerID", "ON rev.CustomerID = cust.CustomerID"], ["No review? ReviewID becomes NULL"], ["Keep ONLY customers with no reviews", "WHERE rev.ReviewID IS NULL"], ["Display CustomerName + City"]],
+  plan: { from: fromRev, joins: [Rcust], where: [["rev.ReviewID", "IS NULL"]], select: [s("cust.CustomerName"), s("cust.City")] } },
+{ id: "Q12", part: "p3", slide: true, title: "Number of reviews for every restaurant, using RIGHT JOIN",
+  sql: `SELECT rest.RestaurantName,
+       COUNT(rev.ReviewID) AS NumberOfReviews
+FROM Review50 AS rev
+RIGHT JOIN Restaurant50 AS rest
+    ON rev.RestaurantID = rest.RestaurantID
+GROUP BY rest.RestaurantID,
+         rest.RestaurantName
+ORDER BY rest.RestaurantID;`,
+  steps: [["Main thing = Restaurant, on the RIGHT side", "RIGHT JOIN Restaurant50"], ["Review information on the left", "FROM Review50"], ["Connected through RestaurantID", "ON rev.RestaurantID = rest.RestaurantID"], ["Put each restaurant's reviews together", "GROUP BY rest.RestaurantID, rest.RestaurantName"], ["Count the reviews (none → 0)", "COUNT(rev.ReviewID)"], ["Sort by restaurant", "ORDER BY rest.RestaurantID"]],
+  plan: { from: fromRev, joins: [J("RIGHT", "Restaurant50", "rest", [eq("rev.RestaurantID", "rest.RestaurantID")])], group: gRest, aggs: [{ as: "NumberOfReviews", fn: "COUNT", col: "rev.ReviewID" }],
+    select: [s("rest.RestaurantName"), s("NumberOfReviews")], order: [{ ref: "rest.RestaurantID" }] },
+  callouts: [["", "<strong>RIGHT JOIN can always be rewritten as LEFT JOIN.</strong> FROM Review50 RIGHT JOIN Restaurant50 gives the same result as FROM Restaurant50 LEFT JOIN Review50 (Section 2) — just swap the tables. Most people write LEFT JOIN because it reads naturally: “start with all restaurants, then attach reviews.”"],
+    ["", "<strong>Why not Restaurant50 RIGHT JOIN Review50?</strong> That keeps every review, but the foreign key guarantees every review has a real restaurant, so the result is the same as an INNER JOIN. LEFT and RIGHT only make a difference when unmatched rows can exist."]],
+  compare: { id: "Q6", cols: ["RestaurantName", "NumberOfReviews"] } },
+/* ---------- 4. FULL OUTER JOIN ---------- */
+{ id: "Q13", part: "p4", slide: true, title: "Every restaurant AND every customer, matched through their reviews",
+  sql: `SELECT rev.ReviewID, rest.RestaurantName,
+       cust.CustomerName, rev.Rating
+FROM Restaurant50 AS rest
+LEFT JOIN Review50 AS rev
+    ON rest.RestaurantID = rev.RestaurantID
+LEFT JOIN Customer50 AS cust
+    ON rev.CustomerID = cust.CustomerID
+
+UNION
+
+SELECT rev.ReviewID, rest.RestaurantName,
+       cust.CustomerName, rev.Rating
+FROM Restaurant50 AS rest
+RIGHT JOIN Review50 AS rev
+    ON rest.RestaurantID = rev.RestaurantID
+RIGHT JOIN Customer50 AS cust
+    ON rev.CustomerID = cust.CustomerID
+
+ORDER BY ReviewID;`,
+  steps: [["Keep rows from BOTH sides — MySQL has no FULL OUTER JOIN", "LEFT JOIN ... UNION ... RIGHT JOIN"], ["Part 1: keep EVERY restaurant", "FROM Restaurant50 LEFT JOIN Review50"], ["Attach each review's customer", "LEFT JOIN Customer50"], ["Part 2: keep EVERY customer (right side)", "... RIGHT JOIN Customer50"], ["Stack both halves, remove duplicate rows", "UNION"], ["Sort by review", "ORDER BY ReviewID"]],
+  plan: { union: [
+      { from: fromRest, joins: [Lrev, J("LEFT", "Customer50", "cust", [eq("rev.CustomerID", "cust.CustomerID")])], select: [s("rev.ReviewID"), s("rest.RestaurantName"), s("cust.CustomerName"), s("rev.Rating")] },
+      { from: fromRest, joins: [J("RIGHT", "Review50", "rev", [eq("rest.RestaurantID", "rev.RestaurantID")]), J("RIGHT", "Customer50", "cust", [eq("rev.CustomerID", "cust.CustomerID")])], select: [s("rev.ReviewID"), s("rest.RestaurantName"), s("cust.CustomerName"), s("rev.Rating")] }
+    ], order: [{ ref: "ReviewID" }] },
+  callouts: [["", "The LEFT JOIN half keeps Taco House; the RIGHT JOIN half keeps Priya and AAAA. UNION (not UNION ALL) removes the duplicate matched rows: 8 + 1 + 2 = 11 rows."],
+    ["", "<strong>UNION vs UNION ALL.</strong> UNION removes duplicate rows; UNION ALL keeps them. For a FULL OUTER JOIN, use UNION — otherwise every matched review would appear twice. Including ReviewID in SELECT also matters: without it, two reviews with identical values would be merged into one."]],
+  compare: { id: "Q2" } },
+/* ---------- 6. NATURAL JOIN ---------- */
+{ id: "Q21", part: "p6", slide: true, title: "Restaurants and their reviews",
+  sql: `SELECT *
+FROM Restaurant50
+NATURAL JOIN Review50
+ORDER BY ReviewID;`,
+  steps: [["Need Restaurant50 + Review50", "FROM Restaurant50"], ["Both tables share a column name", "NATURAL JOIN Review50"], ["Common column = RestaurantID, so no ON needed"], ["Only matching rows; Taco House is dropped"], ["Show all columns (RestaurantID appears once)", "SELECT *"], ["Sort by review", "ORDER BY ReviewID"]],
+  plan: { from: { t: "Restaurant50", as: "Restaurant50" }, joins: [NJ("Review50", [eq("Restaurant50.RestaurantID", "Review50.RestaurantID")], "(shared column name: RestaurantID)")],
+    select: [s("Restaurant50.RestaurantID"), s("Restaurant50.RestaurantName"), s("Restaurant50.City"), s("Review50.ReviewID"), s("Review50.CustomerID"), s("Review50.Rating")], order: [{ ref: "Review50.ReviewID" }] },
+  callouts: [["", "The only column name shared by Restaurant50 and Review50 is RestaurantID, so this works exactly like ON Restaurant50.RestaurantID = Review50.RestaurantID. Notice that RestaurantID appears only once, and it comes first."]],
+  compare: { id: "Q1" } },
+{ id: "Q22", part: "p6", slide: true, title: "NATURAL JOIN with aggregation",
+  sql: `SELECT RestaurantName,
+       COUNT(*)    AS NumberOfReviews,
+       AVG(Rating) AS AverageRating
+FROM Restaurant50
+NATURAL JOIN Review50
+GROUP BY RestaurantID, RestaurantName
+ORDER BY RestaurantID;`,
+  steps: [["Need Restaurant50 + Review50", "FROM Restaurant50"], ["Match automatically on RestaurantID", "NATURAL JOIN Review50"], ["Put each restaurant's reviews together", "GROUP BY RestaurantID, RestaurantName"], ["Count the reviews", "COUNT(*)"], ["Average rating", "AVG(Rating)"], ["Sort by restaurant", "ORDER BY RestaurantID"]],
+  plan: { from: { t: "Restaurant50", as: "Restaurant50" }, joins: [NJ("Review50", [eq("Restaurant50.RestaurantID", "Review50.RestaurantID")], "(shared column name: RestaurantID)")],
+    group: { keys: ["Restaurant50.RestaurantID", "Restaurant50.RestaurantName"] }, aggs: [{ as: "NumberOfReviews", fn: "COUNT", col: "*" }, { as: "AverageRating", fn: "AVG", col: "Review50.Rating" }],
+    showCols: ["Restaurant50.RestaurantName", "Review50.ReviewID", "Review50.Rating"],
+    select: [s("Restaurant50.RestaurantName"), s("NumberOfReviews"), s("AverageRating")], order: [{ ref: "Restaurant50.RestaurantID" }] },
+  callouts: [["", "Same result as the INNER JOIN in Section 1 (Q3). The shared column is written without a table name (RestaurantID, not Restaurant50.RestaurantID)."]],
+  compare: { id: "Q3" } },
+{ id: "Q24", part: "p6", slide: true, title: "The three-table trap",
+  sql: `SELECT rev.ReviewID, rest.RestaurantName,
+       cust.CustomerName, rev.Rating
+FROM Review50 AS rev
+INNER JOIN Restaurant50 AS rest
+    USING (RestaurantID)
+INNER JOIN Customer50 AS cust
+    USING (CustomerID)
+ORDER BY rev.ReviewID;`,
+  steps: [["Main thing = Review", "FROM Review50 AS rev"], ["Need restaurant information", "INNER JOIN Restaurant50 AS rest"], ["Same column name in both tables", "USING (RestaurantID)"], ["Need customer information", "INNER JOIN Customer50 AS cust"], ["Same column name in both tables", "USING (CustomerID)"], ["Sort by review", "ORDER BY rev.ReviewID"]],
+  plan: { from: fromRev, joins: [Object.assign({}, Jrest, { onLabel: "USING (RestaurantID)" }), Object.assign({}, Jcust, { onLabel: "USING (CustomerID)" })],
+    select: [s("rev.ReviewID"), s("rest.RestaurantName"), s("cust.CustomerName"), s("rev.Rating")], order: [{ ref: "rev.ReviewID" }] },
+  callouts: [["warn", "<strong>Recommendation:</strong> NATURAL JOIN is useful to understand, but avoid it in real work. If someone later adds a column with a matching name to one of the tables, every NATURAL JOIN on that table silently changes. ON or USING always say exactly which columns to match."]] },
+/* ---------- 7. More aggregation ---------- */
+{ id: "Q25", part: "p7", slide: true, title: "Full rating summary for each restaurant",
+  sql: `SELECT rest.RestaurantName,
+       COUNT(rev.ReviewID) AS Reviews,
+       MIN(rev.Rating) AS Lowest,
+       MAX(rev.Rating) AS Highest,
+       AVG(rev.Rating) AS Average
+FROM Review50 AS rev
+INNER JOIN Restaurant50 AS rest
+    ON rev.RestaurantID = rest.RestaurantID
+GROUP BY rest.RestaurantID,
+         rest.RestaurantName
+ORDER BY rest.RestaurantID;`,
+  steps: [["Main thing = Review", "FROM Review50"], ["Only restaurants that have reviews", "INNER JOIN Restaurant50"], ["Connected through RestaurantID", "ON rev.RestaurantID = rest.RestaurantID"], ["Put each restaurant's reviews together", "GROUP BY rest.RestaurantID, rest.RestaurantName"], ["Number of reviews", "COUNT(rev.ReviewID)"], ["Lowest and highest rating", "MIN(rev.Rating), MAX(rev.Rating)"], ["Average rating", "AVG(rev.Rating)"], ["Sort by restaurant", "ORDER BY rest.RestaurantID"]],
+  plan: { from: fromRev, joins: [Jrest], group: gRest, aggs: [{ as: "Reviews", fn: "COUNT", col: "rev.ReviewID" }, { as: "Lowest", fn: "MIN", col: "rev.Rating" }, { as: "Highest", fn: "MAX", col: "rev.Rating" }, { as: "Average", fn: "AVG", col: "rev.Rating" }],
+    select: [s("rest.RestaurantName"), s("Reviews"), s("Lowest"), s("Highest"), s("Average")], order: [{ ref: "rest.RestaurantID" }] } },
+{ id: "Q27", part: "p7", slide: true, title: "Average rating given by customers from each city",
+  sql: `SELECT cust.City,
+       COUNT(rev.ReviewID) AS ReviewsWritten,
+       AVG(rev.Rating) AS AverageRatingGiven
+FROM Review50 AS rev
+INNER JOIN Customer50 AS cust
+    ON rev.CustomerID = cust.CustomerID
+GROUP BY cust.City
+ORDER BY cust.City;`,
+  steps: [["Main thing = Review", "FROM Review50"], ["Need the customer's city", "INNER JOIN Customer50"], ["Connected through CustomerID", "ON rev.CustomerID = cust.CustomerID"], ["Put reviews from the same city together", "GROUP BY cust.City"], ["Number of reviews written", "COUNT(rev.ReviewID)"], ["Average rating given", "AVG(rev.Rating)"], ["Sort by city", "ORDER BY cust.City"]],
+  plan: { from: fromRev, joins: [Jcust], group: { keys: ["cust.City"] }, aggs: [{ as: "ReviewsWritten", fn: "COUNT", col: "rev.ReviewID" }, { as: "AverageRatingGiven", fn: "AVG", col: "rev.Rating" }],
+    showCols: ["cust.City", "cust.CustomerName", "rev.ReviewID", "rev.Rating"],
+    select: [s("cust.City"), s("ReviewsWritten"), s("AverageRatingGiven")], order: [{ ref: "cust.City" }] },
+  callouts: [["", "<strong>Harrisburg:</strong> all 3 reviews were written by Anu (5, 3, 4), so the average is 4.0000. Priya and AAAA also live in Harrisburg but wrote nothing, so they add nothing to the count or the average."]] },
+{ id: "Q28", part: "p7", slide: true, title: "Reviews received by restaurants in each city",
+  sql: `SELECT rest.City,
+       COUNT(rev.ReviewID) AS ReviewsReceived,
+       AVG(rev.Rating) AS AverageRating
+FROM Restaurant50 AS rest
+LEFT JOIN Review50 AS rev
+    ON rest.RestaurantID = rev.RestaurantID
+GROUP BY rest.City
+ORDER BY rest.City;`,
+  steps: [["Main thing = Restaurant", "FROM Restaurant50"], ["KEEP restaurants with no reviews", "LEFT JOIN Review50"], ["Connected through RestaurantID", "ON rest.RestaurantID = rev.RestaurantID"], ["Put restaurants from the same city together", "GROUP BY rest.City"], ["Count reviews (NULL ReviewIDs are skipped)", "COUNT(rev.ReviewID)"], ["Average rating received", "AVG(rev.Rating)"], ["Sort by city", "ORDER BY rest.City"]],
+  plan: { from: fromRest, joins: [Lrev], group: { keys: ["rest.City"] }, aggs: [{ as: "ReviewsReceived", fn: "COUNT", col: "rev.ReviewID" }, { as: "AverageRating", fn: "AVG", col: "rev.Rating" }],
+    showCols: ["rest.City", "rest.RestaurantName", "rev.ReviewID", "rev.Rating"],
+    select: [s("rest.City"), s("ReviewsReceived"), s("AverageRating")], order: [{ ref: "rest.City" }] },
+  callouts: [["", "LEFT JOIN keeps Mechanicsburg, whose only restaurant (Taco House) has no reviews."]] },
+{ id: "Q29", part: "p7", slide: true, title: "Number of 5-star reviews per restaurant (WHERE + GROUP BY)",
+  sql: `SELECT rest.RestaurantName,
+       COUNT(rev.ReviewID) AS FiveStarReviews
+FROM Review50 AS rev
+INNER JOIN Restaurant50 AS rest
+    ON rev.RestaurantID = rest.RestaurantID
+WHERE rev.Rating = 5
+GROUP BY rest.RestaurantID,
+         rest.RestaurantName;`,
+  steps: [["Main thing = Review", "FROM Review50"], ["Need restaurant information", "INNER JOIN Restaurant50"], ["Connected through RestaurantID", "ON rev.RestaurantID = rest.RestaurantID"], ["Keep only 5-star rows BEFORE grouping", "WHERE rev.Rating = 5"], ["Put each restaurant's 5-star reviews together", "GROUP BY rest.RestaurantID, rest.RestaurantName"], ["Count the 5-star reviews", "COUNT(rev.ReviewID)"], ["Restaurants with NO 5-star reviews will not appear"]],
+  plan: { from: fromRev, joins: [Jrest], where: [["rev.Rating", "=", { v: 5 }]], whereNote: "This happens before grouping.", group: gRest, aggs: [{ as: "FiveStarReviews", fn: "COUNT", col: "rev.ReviewID" }],
+    select: [s("rest.RestaurantName"), s("FiveStarReviews")] },
+  callouts: [["warn", "WHERE removes every review that is not 5 stars before grouping, so Pizza Corner and XYZ Restaurant have no rows left and do not appear."]] },
+/* ---------- 8. HAVING ---------- */
+{ id: "Q31", part: "p8", slide: true, title: "Restaurants with an average rating of at least 4",
+  sql: `SELECT rest.RestaurantName,
+       AVG(rev.Rating) AS AverageRating
+FROM Review50 AS rev
+INNER JOIN Restaurant50 AS rest
+    ON rev.RestaurantID = rest.RestaurantID
+GROUP BY rest.RestaurantID,
+         rest.RestaurantName
+HAVING AVG(rev.Rating) >= 4
+ORDER BY rest.RestaurantID;`,
+  steps: [["Main thing = Review", "FROM Review50"], ["Only restaurants that have reviews", "INNER JOIN Restaurant50"], ["Connected through RestaurantID", "ON rev.RestaurantID = rest.RestaurantID"], ["Put each restaurant's reviews together", "GROUP BY rest.RestaurantID, rest.RestaurantName"], ["Average rating per restaurant", "AVG(rev.Rating)"], ["Filter the GROUPS after averaging", "HAVING AVG(rev.Rating) >= 4"], ["WHERE filters rows before GROUP BY; HAVING filters groups after"], ["Sort by restaurant", "ORDER BY rest.RestaurantID"]],
+  plan: { from: fromRev, joins: [Jrest], group: gRest, aggs: [{ as: "AverageRating", fn: "AVG", col: "rev.Rating" }],
+    having: { text: "AVG(rev.Rating) >= 4", fn: g => g.agg.AverageRating !== null && g.agg.AverageRating >= 4 },
+    select: [s("rest.RestaurantName"), s("AverageRating")], order: [{ ref: "rest.RestaurantID" }] },
+  callouts: [["", "XYZ Restaurant (3.0000) is removed."]] },
+{ id: "Q32", part: "p8", slide: true, title: "Customers who wrote more than one review",
+  sql: `SELECT cust.CustomerName,
+       COUNT(rev.ReviewID) AS ReviewsWritten
+FROM Review50 AS rev
+INNER JOIN Customer50 AS cust
+    ON rev.CustomerID = cust.CustomerID
+GROUP BY cust.CustomerID, cust.CustomerName
+HAVING COUNT(rev.ReviewID) > 1
+ORDER BY cust.CustomerID;`,
+  steps: [["Main thing = Review", "FROM Review50"], ["Need customer information", "INNER JOIN Customer50"], ["Connected through CustomerID", "ON rev.CustomerID = cust.CustomerID"], ["Put each customer's reviews together", "GROUP BY cust.CustomerID, cust.CustomerName"], ["Reviews written per customer", "COUNT(rev.ReviewID)"], ["Filter the GROUPS after counting", "HAVING COUNT(rev.ReviewID) > 1"], ["WHERE filters rows before GROUP BY; HAVING filters groups after"], ["Sort by customer", "ORDER BY cust.CustomerID"]],
+  plan: { from: fromRev, joins: [Jcust], group: gCust, aggs: [{ as: "ReviewsWritten", fn: "COUNT", col: "rev.ReviewID" }],
+    having: { text: "COUNT(rev.ReviewID) > 1", fn: g => g.agg.ReviewsWritten > 1 },
+    select: [s("cust.CustomerName"), s("ReviewsWritten")], order: [{ ref: "cust.CustomerID" }] },
+  callouts: [["", "John wrote only one review, so he is removed."]] },
+{ id: "Q33", part: "p8", slide: true, title: "Highest-rated restaurant, first attempt: ORDER BY + LIMIT 1",
+  sql: `SELECT rest.RestaurantName,
+       AVG(rev.Rating) AS AverageRating
+FROM Review50 AS rev
+INNER JOIN Restaurant50 AS rest
+    ON rev.RestaurantID = rest.RestaurantID
+GROUP BY rest.RestaurantID,
+         rest.RestaurantName
+ORDER BY AverageRating DESC,
+         rest.RestaurantID
+LIMIT 1;`,
+  steps: [["Main thing = Review", "FROM Review50"], ["Need restaurant information", "INNER JOIN Restaurant50"], ["Connected through RestaurantID", "ON rev.RestaurantID = rest.RestaurantID"], ["Put each restaurant's reviews together", "GROUP BY rest.RestaurantID, rest.RestaurantName"], ["Average rating per restaurant", "AVG(rev.Rating)"], ["Highest average first; ties by ID", "ORDER BY AverageRating DESC, rest.RestaurantID"], ["Keep only the first row", "LIMIT 1"]],
+  plan: { from: fromRev, joins: [Jrest], group: gRest, aggs: [{ as: "AverageRating", fn: "AVG", col: "rev.Rating" }],
+    select: [s("rest.RestaurantName"), s("AverageRating")], order: [{ ref: "AverageRating", desc: true }, { ref: "rest.RestaurantID" }], limit: 1 },
+  callouts: [["warn", "<strong>LIMIT 1 hides a tie.</strong> Tasty Bites has exactly the same average (4.3333), but only ABC Restaurant is returned. To return every restaurant tied for first place, compare each average with the maximum average, using a subquery."]] }
+];
+const QBY = Object.fromEntries(Q.map(q => [q.id, q]));
+const qLabel = q => q.label || q.id;
+
+/* ================= Rendering ================= */
+const esc = x => String(x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const cell = v => v === null || v === undefined ? `<span class="null">NULL</span>` : esc(v);
+function tableHTML(v, extraCell) {
+  if (!v) return "";
+  let h = `<div>${v.title ? `<p class="tt">${esc(v.title)}</p>` : ""}<div class="scroll"><table><thead><tr>`;
+  v.cols.forEach(c => h += `<th class="${v.hlCols.includes(c) ? "hc" : ""}">${esc(c)}</th>`);
+  h += "</tr></thead><tbody>";
+  if (!v.rows.length) h += `<tr><td colspan="${v.cols.length}" class="empty">No rows</td></tr>`;
+  v.rows.forEach((r, i) => {
+    h += `<tr class="${v.rowCls[i] || ""}">` + r.map((x, j) => `<td class="${v.hlCols.includes(v.cols[j]) ? "hc" : ""} ${extraCell ? extraCell(i, j) : ""}">${cell(x)}</td>`).join("") + "</tr>";
+  });
+  return h + "</tbody></table></div></div>";
+}
+function hlSQL(t) {
+  let h = esc(t);
+  h = h.replace(/\b(CREATE DATABASE|CREATE TABLE|USE|INSERT INTO|VALUES|PRIMARY KEY|FOREIGN KEY|REFERENCES|AUTO_INCREMENT|INT|VARCHAR|SELECT|DISTINCT|FROM|AS|INNER JOIN|LEFT JOIN|RIGHT JOIN|NATURAL JOIN|JOIN|ON|AND|WHERE|GROUP BY|HAVING|ORDER BY|LIMIT|UNION|USING|IS NULL|DESC)\b/g, '<span class="kw">$1</span>');
+  h = h.replace(/\b(COUNT|AVG|MIN|MAX|ROUND)\(/g, '<span class="fn">$1</span>(');
+  return h;
+}
+const CODE_LINE = /^(SELECT|FROM|JOIN|INNER JOIN|LEFT JOIN|RIGHT JOIN|NATURAL JOIN|ON |GROUP BY|COUNT|AVG|MIN|MAX|ROUND|WHERE|HAVING|ORDER BY|LIMIT|UNION|USING|rest\.|rev\.|cust\.|RestaurantID$|CustomerID$|So use: USING)/;
+function flowHTML(lines) {
+  return lines.map((t, i) => (i ? "<i>↓</i>" : "") + `<span class="${i === 0 ? "q" : CODE_LINE.test(t) ? "code" : ""}">${esc(t)}</span>`).join("");
+}
+async function copyText(btn, text) {
+  try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; }
+  catch (e) { btn.textContent = "Select and copy"; }
+  setTimeout(() => btn.textContent = btn.dataset.label || "Copy", 1400);
+}
+
+const STATE = {};
+let speed = 900;
+function buildAll() {
+  const box = document.getElementById("queries");
+  let h = "", toc = `<a href="#setup">Database setup</a><a href="#data">The data</a>`;
+  PARTS.forEach(p => {
+    const qs = Q.filter(q => q.part === p.id), allBonus = qs.every(q => !q.slide);
+    h += `<section id="${p.id}" class="${allBonus ? "bonus" : ""}"><h2>${esc(p.title)}${allBonus ? '<span class="tag">Extra</span>' : ""}</h2><p class="intro">${esc(p.intro)}</p>`;
+    toc += `<a class="part ${allBonus ? "bonus" : ""}" href="#${p.id}">${esc(p.title)}</a>`;
+    qs.forEach(q => {
+      const sid = "q-" + q.id, steps = q.steps || [], flow = FLOWS[q.id];
+      const tag = !q.slide ? '<span class="tag">Extra · not in slides</span>' : q.follow ? '<span class="tag">Follow-up to Q33</span>' : "";
+      toc += `<a class="qa ${q.slide ? "" : "bonus"}" href="#${sid}" data-q="${sid}"><b>${esc(qLabel(q))}</b>${esc(q.title.length > 44 ? q.title.slice(0, 42) + "…" : q.title)}</a>`;
+      h += `<article class="card q ${q.slide ? "" : "bonus"}" id="${sid}">
+        <p class="eyebrow">${esc(p.title)} &nbsp;·&nbsp; ${esc(qLabel(q))}${tag}</p>
+        <h3 class="qtitle">${esc(q.title)}</h3>
+        <div class="slide3 ${steps.length ? "" : "nosteps"}">
+          <div><p class="lbl">SQL query</p><div class="codewrap"><pre class="sql">${hlSQL(q.sql)}</pre><button class="copy" data-copy>Copy</button></div></div>
+          ${steps.length ? `<div><p class="lbl">How to think it through</p><ol class="steps">${steps.map(([t, c]) => `<li>${esc(t)}${c ? `<code>${esc(c)}</code>` : ""}</li>`).join("")}</ol></div>` : ""}
+          <div class="out"><p class="lbl">Output</p><div data-out></div>
+            ${(q.callouts || []).map(([k, t]) => `<div class="callout ${k}">${t}</div>`).join("")}</div>
+        </div>
+        ${flow ? `<details class="think"><summary>Full thinking flow from the handout</summary><div class="chain">${flowHTML(flow)}</div></details>` : ""}
+        <details class="walk" data-walk><summary>Watch it run, step by step</summary><div class="inner">
+          <div class="pipe" data-pipe></div>
+          <div class="controls">
+            <button class="btn" data-a="back">Back</button><button class="btn primary" data-a="play">Play</button>
+            <button class="btn" data-a="step">Step</button><button class="btn" data-a="full">Show full result</button>
+            <button class="btn" data-a="restart">Start over</button><span class="counter" data-counter></span>
+          </div>
+          <div class="narr" data-narr aria-live="polite"></div>
+          <div class="viz" data-viz></div>
+        </div></details>
+        ${q.compare ? `<details class="compare" data-cmp><summary>Compare with ${esc(q.compare.label || qLabel(QBY[q.compare.id]) + ": " + QBY[q.compare.id].title)}</summary><div data-cmpbody></div></details>` : ""}
+      </article>`;
+    });
+    h += `</section>`;
+  });
+  toc += `<a class="part" href="#summary">Summary</a>`;
+  box.innerHTML = h; document.getElementById("toc").innerHTML = toc;
+  Q.forEach(q => {
+    const el = document.getElementById("q-" + q.id);
+    STATE[q.id] = { q, el, idx: 0, timer: null, steps: [] };
+    el.querySelectorAll("[data-a]").forEach(b => b.onclick = () => act(q.id, b.dataset.a));
+    el.querySelector("[data-copy]").onclick = e => copyText(e.target, q.sql);
+    const w = el.querySelector("[data-walk]"); w.ontoggle = () => { if (!w.open) stop(q.id); };
+    const cmp = el.querySelector("[data-cmp]"); if (cmp) cmp.ontoggle = () => { if (cmp.open) renderCompare(q.id); };
+  });
+  recomputeAll();
+}
+function recomputeAll() {
+  Q.forEach(q => {
+    const st = STATE[q.id]; stop(q.id); const r = run(q); st.steps = r.steps; st.result = r.result; st.idx = 0; render(q.id);
+    st.el.querySelector("[data-out]").innerHTML = tableHTML(view("", r.result.cols, r.result.rows));
+  });
+  Q.forEach(q => { const c = STATE[q.id].el.querySelector("[data-cmp]"); if (c && c.open) renderCompare(q.id); });
+  renderKeep();
+}
+function render(id) {
+  const st = STATE[id], step = st.steps[st.idx], el = st.el;
+  const phases = []; st.steps.forEach(s => { if (!phases.includes(s.phase)) phases.push(s.phase); });
+  const ci = phases.indexOf(step.phase);
+  el.querySelector("[data-pipe]").innerHTML = phases.map((p, i) => `<span class="${i < ci ? "done" : i === ci ? "now" : ""}">${p}</span>`).join("<b>›</b>");
+  el.querySelector("[data-narr]").textContent = step.text;
+  el.querySelector("[data-counter]").textContent = `Step ${st.idx + 1} of ${st.steps.length}`;
+  el.querySelector("[data-viz]").innerHTML = (step.panels.length ? `<div class="panels">${step.panels.map(v => tableHTML(v)).join("")}</div>` : "") + tableHTML(step.out);
+  el.querySelector('[data-a="back"]').disabled = st.idx === 0;
+  el.querySelector('[data-a="step"]').disabled = el.querySelector('[data-a="full"]').disabled = st.idx >= st.steps.length - 1;
+}
+function stop(id) { const st = STATE[id]; if (st && st.timer) { clearInterval(st.timer); st.timer = null; st.el.querySelector('[data-a="play"]').textContent = "Play"; } }
+function fwd(id) { const st = STATE[id]; if (st.idx < st.steps.length - 1) { st.idx++; render(id); } if (st.idx >= st.steps.length - 1) stop(id); }
+function act(id, a) {
+  const st = STATE[id];
+  if (a === "play") {
+    if (st.timer) { stop(id); return; }
+    Object.keys(STATE).forEach(k => k !== id && stop(k));
+    if (st.idx >= st.steps.length - 1) st.idx = 0;
+    st.el.querySelector('[data-a="play"]').textContent = "Pause"; fwd(id);
+    st.timer = setInterval(() => fwd(id), speed); return;
+  }
+  stop(id);
+  if (a === "step") fwd(id);
+  if (a === "back" && st.idx > 0) { st.idx--; render(id); }
+  if (a === "full") { st.idx = st.steps.length - 1; render(id); }
+  if (a === "restart") { st.idx = 0; render(id); }
+}
+
+function renderCompare(id) {
+  const st = STATE[id], other = STATE[st.q.compare.id];
+  const A = st.result, B = other.result;
+  const common = st.q.compare.cols || A.cols.filter(c => B.cols.includes(c));
+  const pj = R => R.rows.map(r => common.map(c => r[R.cols.indexOf(c)]));
+  const a = pj(A), b = pj(B), key = r => JSON.stringify(r);
+  const aCls = {}, bCls = {}, aCell = {}, bCell = {};
+  const firstUnique = rows => new Set(rows.map(r => r[0])).size === rows.length;
+  let only = 0, diffs = 0;
+  if (common.length > 1 && firstUnique(a) && firstUnique(b)) {
+    const bm = new Map(b.map((r, i) => [r[0], i])), am = new Map(a.map((r, i) => [r[0], i]));
+    a.forEach((r, i) => { if (!bm.has(r[0])) { aCls[i] = "only"; only++; } else { const o = b[bm.get(r[0])]; r.forEach((v, j) => { if (String(v) !== String(o[j])) { aCell[i + "," + j] = 1; bCell[bm.get(r[0]) + "," + j] = 1; diffs++; } }); } });
+    b.forEach((r, i) => { if (!am.has(r[0])) { bCls[i] = "only"; only++; } });
+  } else {
+    const count = rows => { const m = new Map(); rows.forEach(r => m.set(key(r), (m.get(key(r)) || 0) + 1)); return m; };
+    const ca = count(a), cb = count(b), ua = new Map(), ub = new Map();
+    a.forEach((r, i) => { const k = key(r), u = (ua.get(k) || 0) + 1; ua.set(k, u); if (u > (cb.get(k) || 0)) { aCls[i] = "only"; only++; } });
+    b.forEach((r, i) => { const k = key(r), u = (ub.get(k) || 0) + 1; ub.set(k, u); if (u > (ca.get(k) || 0)) { bCls[i] = "only"; only++; } });
+  }
+  const la = qLabel(st.q), lb = qLabel(other.q);
+  const same = !only && !diffs && a.length === b.length;
+  const sum = same ? `Same rows in both (comparing ${common.join(", ")}).`
+    : `${la} returns ${plural(a.length, "row")} and ${lb} returns ${b.length}. ${only ? plural(only, "row") + (only === 1 ? " appears" : " appear") + " in only one result (coral). " : ""}${diffs ? plural(diffs, "value") + (diffs === 1 ? " differs" : " differ") + " (amber)." : ""}`;
+  const va = view(`${la} (this question)`, common, a, aCls), vb = view(lb, common, b, bCls);
+  st.el.querySelector("[data-cmpbody]").innerHTML = `<div class="cmpgrid">${tableHTML(va, (i, j) => aCell[i + "," + j] ? "diff" : "")}${tableHTML(vb, (i, j) => bCell[i + "," + j] ? "diff" : "")}</div><p class="cmpsum">${esc(sum)}</p>`;
+}
+
+/* Summary slide: row counts come from the live results */
+function renderKeep() {
+  const n = id => STATE[id].result.rows.length;
+  const rows = [["INNER JOIN", "Missing", "Missing", n("Q1")], ["LEFT JOIN (from Restaurant50)", "Included", "Missing", n("Q5")],
+    ["RIGHT JOIN (to Customer50)", "Missing", "Included", n("Q10")], ["FULL OUTER JOIN", "Included", "Included", n("Q13")]];
+  document.getElementById("keepRows").innerHTML = rows.map(r => `<tr><td>${r[0]}</td>${[r[1], r[2]].map(x => `<td class="${x === "Included" ? "in" : "out"}">${x}</td>`).join("")}<td>${r[3]}</td></tr>`).join("");
+  document.getElementById("keepNote").textContent = `${n("Q1")} matched reviews + ${plural(n("Q8"), "restaurant")} with no reviews + ${plural(n("Q11"), "customer")} with no reviews = ${n("Q13")} rows for the FULL OUTER JOIN.`;
+}
+
+/* ================= Data editing ================= */
+let editing = null;
+function dataHighlights() {
+  const rev = DB.Review50.rows, cls = { Restaurant50: {}, Customer50: {}, Review50: {} };
+  DB.Restaurant50.rows.forEach((r, i) => { if (!rev.some(v => v[1] === r[0])) cls.Restaurant50[i] = "nomatch"; });
+  DB.Customer50.rows.forEach((r, i) => { if (!rev.some(v => v[2] === r[0])) cls.Customer50[i] = "nomatch"; });
+  const pairs = {}; rev.forEach(v => { const k = v[1] + "|" + v[2]; pairs[k] = (pairs[k] || 0) + 1; });
+  rev.forEach((v, i) => { if (pairs[v[1] + "|" + v[2]] > 1) cls.Review50[i] = "repeat"; });
+  return cls;
+}
+function renderData() {
+  const hl = dataHighlights(), order = ["Restaurant50", "Review50", "Customer50"], links = ["◄ RestaurantID", "CustomerID ►"];
+  let h = "";
+  order.forEach((t, ti) => {
+    const T = DB[t];
+    h += `<div><p class="tt">${t}</p><div class="scroll"><table><thead><tr>${T.cols.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>`;
+    T.rows.forEach((r, ri) => {
+      h += `<tr class="${hl[t][ri] || ""}">` + r.map((v, ci) => editing && editing[0] === t && editing[1] === ri && editing[2] === ci
+        ? `<td><input id="ed" value="${v === null ? "NULL" : esc(v)}" aria-label="${t} ${T.cols[ci]} row ${ri + 1}"></td>`
+        : `<td class="edit" tabindex="0" data-t="${t}" data-r="${ri}" data-c="${ci}">${cell(v)}</td>`).join("") + "</tr>";
+    });
+    h += "</tbody></table></div></div>";
+  });
+  const box = document.getElementById("dataTables"); box.innerHTML = h;
+  box.querySelectorAll("td.edit").forEach(td => {
+    const open = () => { editing = [td.dataset.t, +td.dataset.r, +td.dataset.c]; renderData(); const e = document.getElementById("ed"); e.focus(); e.select(); };
+    td.onclick = open; td.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); open(); } };
+  });
+  const ed = document.getElementById("ed");
+  if (ed) {
+    const commit = save => {
+      if (!editing) return; const [t, ri, ci] = editing; editing = null;
+      if (save) {
+        let v = ed.value.trim();
+        if (v.toUpperCase() === "NULL" || v === "") v = null;
+        else if (DB[t].num.includes(ci)) { const n = Number(v); v = isNaN(n) ? v : n; }
+        DB[t].rows[ri][ci] = v; recomputeAll();
+      }
+      renderData();
+    };
+    ed.onkeydown = e => { if (e.key === "Enter") commit(true); if (e.key === "Escape") commit(false); };
+    ed.onblur = () => commit(true);
+  }
+}
+document.getElementById("resetData").onclick = () => { DB = JSON.parse(JSON.stringify(DEFAULT)); editing = null; renderData(); recomputeAll(); };
+document.getElementById("speed").onchange = e => {
+  speed = +e.target.value;
+  Object.keys(STATE).forEach(k => { const st = STATE[k]; if (st.timer) { clearInterval(st.timer); st.timer = setInterval(() => fwd(k), speed); } });
+};
+
+/* Setup script */
+document.querySelectorAll("[data-sql]").forEach((pre, i) => {
+  const t = SETUP[+pre.dataset.sql.slice(5)]; pre.innerHTML = hlSQL(t);
+  const b = document.createElement("button"); b.className = "copy"; b.textContent = "Copy"; b.onclick = () => copyText(b, t); pre.parentNode.appendChild(b);
+});
+const ca = document.getElementById("copyAll"); ca.dataset.label = ca.textContent;
+ca.onclick = () => copyText(ca, SETUP.join("\n\n"));
+
+
+/* highlight current question in the table of contents */
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting) { document.querySelectorAll(".toc a.on").forEach(a => a.classList.remove("on")); const a = document.querySelector(`.toc a[data-q="${e.target.id}"]`); if (a) a.classList.add("on"); }
+}), { rootMargin: "-40% 0px -55% 0px" });
+
+renderData(); buildAll();
+document.querySelectorAll("article.card.q").forEach(a => io.observe(a));
+</script>
+</body>
+</html>
